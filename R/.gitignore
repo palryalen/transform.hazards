@@ -1,0 +1,11 @@
+parEstEuler.R
+checkConv.R
+checkConv2.R
+checkConv3.R
+checkConvParallel.R
+coverage.R
+parEst.R
+parEst2.R
+parEstCharacter.R
+sensitivity.R
+misc.R
