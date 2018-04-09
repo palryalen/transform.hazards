@@ -126,7 +126,7 @@
 #' lines(seq(0,10,length.out = 100),exp(seq(0,10,length.out = 100)*(1.3-1)),col=2)
 #' legend("topright",c("SDE plugin estimates","Exact"),lty=1,col=c(1,2),bty="n")
 #' 
-#' @references Ryalen, P.C., Stensrud, M.J., Røysland, K.: \emph{Transforming cumulative hazards}, unpublished manuscript(2017)
+#' @references Ryalen, P.C., Stensrud, M.J., Røysland, K.: \emph{Transforming cumulative hazards}, arXiv:1710.07422, to appear in Biometrika 2018.
 #' 
 #' @export
 
