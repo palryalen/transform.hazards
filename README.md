@@ -15,6 +15,14 @@ devtools::install_github("palryalen/transform.hazards").
 
 You can also download the source from this page and build the package manually.
 
+## Examples
+
+```
+library(transform.hazards)
+
+example(pluginEstimate)
+```
+
 ## Versioning
 
 We use [SemVer](http://semver.org/) for versioning.
