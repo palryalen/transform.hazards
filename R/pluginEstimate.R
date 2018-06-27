@@ -11,7 +11,7 @@
 #' 
 #' @author Pål Christie Ryalen \email{p.c.ryalen@@medisin.uio.no}
 #' 
-#' @return \code{list} containing the parameter estimate \code{X}, and its covariance estimates
+#' @return \code{list} containing the parameter estimate \code{X}, and its covariance estimates \code{V/n}
 #' 
 #' 
 #' @examples 
@@ -76,7 +76,7 @@
 #' gradientList_cuminc <- list( function(X)matrix(c(0,0,1,0),nrow=2),
 #'                              function(X)matrix(c(0,0,-1,-1),nrow=2) )
 #'                              
-#' X0_cuminc <- c(0,1)
+#' X0_cuminc <- matrix(0,1)
 #' V0_cuminc <- matrix(0,nrow=2,ncol=2)
 #' 
 #' paramEst_cuminc <- pluginEstimate(n,hazMatrix,F_fun_cuminc,gradientList_cuminc,X0_cuminc,V0_cuminc)
@@ -84,8 +84,8 @@
 #' times <- c(0,dfr$to)
 #' 
 #' plot(times,paramEst_cuminc$X[1,],type="s",ylab="",xlab="time",main="SDE plugin cumulative incidence estimate",ylim=c(0,0.7))
-#' lines(times,paramEst_cuminc$X[1,] + 1.96*sqrt(paramEst_cuminc$covariance[1,]),type="s")
-#' lines(times,paramEst_cuminc$X[1,] - 1.96*sqrt(paramEst_cuminc$covariance[1,]),type="s")
+#' lines(times,paramEst_cuminc$X[1,] + 1.96*sqrt(paramEst_cuminc$covariance[1,1,]),type="s")
+#' lines(times,paramEst_cuminc$X[1,] - 1.96*sqrt(paramEst_cuminc$covariance[1,1,]),type="s")
 #' lines(seq(0,10,length.out = 1000),10/1000*cumsum(exp(-seq(0,10,length.out = 1000)*(1 + 1.3))),col=2)
 #' legend("topright",c("SDE plugin estimates","Exact"),lty=1,col=c(1,2),bty="n")
 #' 
@@ -101,30 +101,30 @@
 #' nrisk <- 300:1
 #' dA1 <- 1*(t1 %in% times)/nrisk
 #' dA2 <- 1*(t2 %in% times)/nrisk
-#'
+#' 
 #' tmatch1 <- match(t1,times)
 #' tmatch2 <- match(t2,times)
-#'
+#' 
 #' hazMatrix <- matrix(0,nrow=2,ncol=length(times))
 #' hazMatrix[1,tmatch1] <- dA1
 #' hazMatrix[2,tmatch2] <- dA2
 #' 
-#' F_fun_RelSurv <- function(X)rbind(c(-X[1],X[1]),c(-X[2],0),c(0,-X[3]))
-#' gradientList_RelSurv <- list(function(X)rbind(c(-1,0,0),c(0,-1,0),c(0,0,0)),
-#'                              function(X)rbind( c(1,0,0), c(0,0,0), c(0,0,-1) ))
-#'                              
-#' X0_RelSurv <- c(1,1,1)
-#' V0_RelSurv <- matrix(0,nrow=3,ncol=3)
+#' F_fun_RelSurv <- function(X)matrix(c(-X,X),ncol=2)
+#' gradientList_RelSurv <- list(function(X)matrix(-1,nrow=1,ncol=1),
+#'                              function(X)matrix(1,nrow=1,ncol=1))
+#' 
+#' X0_RelSurv <- matrix(1,nrow=1,ncol=1)
+#' V0_RelSurv <- matrix(0,nrow=1,ncol=1)
 #' 
 #' 
 #' paramEst_relsurv <- pluginEstimate(n,hazMatrix,F_fun_RelSurv,gradientList_RelSurv,X0_RelSurv,V0_RelSurv)
 #' 
 #' 
 #' plot(times,paramEst_relsurv$X[1,],type="s",ylab="",xlab="time",main="SDE plugin relative survival estimate",ylim=c(-1,5.8),xlim=c(0,4))
-#' lines(times,paramEst_relsurv$X[1,] + 1.96*sqrt(paramEst_relsurv$covariance[1,]),type="s")
-#' lines(times,paramEst_relsurv$X[1,] - 1.96*sqrt(paramEst_relsurv$covariance[1,]),type="s")
+#' lines(times,paramEst_relsurv$X[1,] + 1.96*sqrt(paramEst_relsurv$covariance[1,,]),type="s")
+#' lines(times,paramEst_relsurv$X[1,] - 1.96*sqrt(paramEst_relsurv$covariance[1,,]),type="s")
 #' lines(seq(0,10,length.out = 100),exp(seq(0,10,length.out = 100)*(1.3-1)),col=2)
-#' legend("topright",c("SDE plugin estimates","Exact"),lty=1,col=c(1,2),bty="n")
+#' legend("topleft",c("SDE plugin estimates","Exact"),lty=1,col=c(1,2),bty="n")
 #' 
 #' @references Ryalen, P.C., Stensrud, M.J., Røysland, K.: \emph{Transforming cumulative hazards}, arXiv:1710.07422, to appear in Biometrika 2018.
 #' 
@@ -132,16 +132,22 @@
 
 
 
-# Euler solver  ~~  Built-in lebesgue
-pluginEstimate <- function(n,hazMatrix,F_fun,gradientList,X0,V0){
+# Euler solver
+pluginEstimate <- function(n,hazMatrix,F_fun,gradientList,X0,V0,isLebesgue = NULL){
         if(is.null(dim(hazMatrix)))
                 hazMatrix <- matrix(hazMatrix,nrow=1)
         
+        if(class(V0) != "matrix" | class(F_fun(X0)) != "matrix" |
+           class(gradientList[[1]](V0)) != "matrix" | class(hazMatrix) != "matrix")
+                stop("Please provide input on matrix form")
+        
         numIncrements <- ncol(hazMatrix)
         X <- matrix(0,nrow=length(X0),ncol=numIncrements)
-        V <- matrix(0,nrow=prod(dim(V0)),ncol=numIncrements)
+        # V <- matrix(0,nrow=prod(dim(V0)),ncol=numIncrements)
+        
+        V <- array(0,dim = c(dim(V0),numIncrements))
         X[,1] <- X0
-        V[,1] <- V0
+        V[,,1] <- V0
         
         XRows <- length(X0)
         hazRows <- nrow(hazMatrix)
@@ -150,25 +156,24 @@ pluginEstimate <- function(n,hazMatrix,F_fun,gradientList,X0,V0){
         
         for(i in 2:numIncrements){
                 X_last <- X[,i-1]
-                # Hack for dealing with NA
-                X_last[is.na(X_last)] <- X0[is.na(X_last)]
-                
+
+                # Euler step for parameter X
                 FX_mat <- F_fun(X_last)
                 X[,i] <- X_last + FX_mat %*% hazMatrix[,i]
                 
                 Vtemp <- matrix(0,nrow=XRows,ncol=XRows)
-                Vn <- matrix(V[,i-1],nrow=XRows,ncol=XRows)
+                Vn <- V[,,i-1]
                 
-                # Hack for dealing with NA
-                Vn[is.na(Vn)] <- V0[is.na(Vn)]
+                # Euler step for covariance V
                 for(j in 1:numHaz){
                         Vtemp <- Vtemp + (Vn %*% t(gradientList[[j]](X_last)) + gradientList[[j]](X_last) %*% Vn) * hazMatrix[j,i]
                 }
                 
-                dW <- diag(hazRows) * hazMatrix[,i]^2
+                # The outer product of the hazard increments
+                dW <- hazMatrix[,i] %o% hazMatrix[,i]
                 
                 Vn <- Vn + Vtemp + n*FX_mat %*% dW %*% t(FX_mat)
-                V[,i] <- as.vector(Vn)
+                V[,,i] <- Vn
                 
                 
         }
