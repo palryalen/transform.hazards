@@ -10,14 +10,17 @@
 Make sure to have the ``devtools`` package installed. Then run
 
 ```
-devtools::install_github("palryalen/transform.hazards").
+devtools::install_github("palryalen/transform.hazards", build_vignettes=TRUE).
 ```
 
+Please find a vignette with worked examples using the command ``` devtools::browseVignettes("transform.hazards") ```
 You can also download the source from this page and build the package manually.
 
 ## Examples
 
 ```
+devtools::browseVignettes("transform.hazards")
+
 library(transform.hazards)
 
 example(pluginEstimate)
