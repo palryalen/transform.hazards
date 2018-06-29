@@ -8,7 +8,10 @@ Description: Solves SDE system driven by cumulative hazards
                 estimated using the additive hazards model
 License: CC BY-NC 4.0
 Suggests:
-	timereg
+	timereg,
+    knitr,
+    rmarkdown
 LazyData: TRUE
 RoxygenNote: 6.0.1
 Encoding: UTF-8
+VignetteBuilder: knitr

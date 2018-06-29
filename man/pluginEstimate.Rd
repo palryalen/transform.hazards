@@ -4,26 +4,26 @@
 \alias{pluginEstimate}
 \title{SDE plugin estimator solver}
 \usage{
-pluginEstimate(n, hazMatrix, F_fun, gradientList, X0, V0)
+pluginEstimate(n, hazMatrix, F_fun, JacobianList, X0, V0, isLebesgue = NULL)
 }
 \arguments{
 \item{n}{Total number of indiivduals}
 
 \item{hazMatrix}{Matrix consisting of hazards(rows) and their increments(columns) along the same time scale}
 
-\item{F_fun}{Integrand function for the differential equation system}
+\item{F_fun}{Integrand function F = (F_1,F_2,...) for the differential equation system}
 
-\item{gradientList}{\code{list} containing derivatives of \code{F_fun}}
+\item{JacobianList}{The Jacobian matrices of F_1, F_2, ... organized in a \code{list}}
 
 \item{X0}{Vector containing initial values for the parameter}
 
 \item{V0}{Matrix containing initial values for the variance}
 }
 \value{
-\code{list} containing the parameter estimate \code{X}, and its covariance estimates
+\code{list} containing the parameter estimate \code{X}, and its covariance estimates \code{V/n}
 }
 \description{
-Calculates recursive estimator for given hazard estimates, integrand function and gradients. Assumes there are no tied event times.
+Calculates recursive estimator for given hazard estimates, integrand function and gradients.
 }
 \examples{
 
@@ -46,23 +46,23 @@ dA <- dN/Y
 
 # Function specification
 F_fun_Survival <- function(x)-x
-gradientListSurvival <- list(function(x)-1)
+JacobianListSurvival <- list(function(x)-1)
 X0_Survival <- 1
 V0_Survival <- 0
 
-paramEst_survival <- pluginEstimate(n,dA,F_fun_Survival,gradientListSurvival,X0_Survival,V0_Survival)
+paramEst_survival <- pluginEstimate(n,dA,F_fun_Survival,JacobianListSurvival,X0_Survival,V0_Survival)
 
 KM <- cumprod(1 - dA)
 Greenwood <- KM^2 * cumsum(dA^2)
 
-plot(times,paramEst_survival$X,type="s",main="SDE plugin survival estimates")
+plot(times,paramEst_survival$X,type="s",main="SDE plugin survival estimates",ylab="",xlab="time")
 lines(times,paramEst_survival$X + 1.96*sqrt(paramEst_survival$covariance),type="s")
 lines(times,paramEst_survival$X - 1.96*sqrt(paramEst_survival$covariance),type="s")
 lines(seq(0,10,length.out=100),exp(-seq(0,10,length.out=100)),col=2)
 legend("topright",c("SDE plugin estimates","Exact"),lty=1,col=c(1,2),bty="n")
 
 plot(times,paramEst_survival$covariance,type="s",main="SDE plugin variance vs Greenwood variance",ylab="",xlab="time")
-lines(times,Greenwood,type="s",col=4,lty=2)
+lines(times,Greenwood,type="s",col=4,lty=1)
 legend("topright",c("SDE plugin estimates","Greenwood"),lty=1,col=c(1,4),bty="n")
 
 #################################################################################
@@ -84,19 +84,19 @@ dA2 <- c(0,1*(dfr$to.state==1))/nrisk
 hazMatrix <- rbind(dA1,dA2)
 
 F_fun_cuminc <- function(X)rbind(c(X[2],0),c(-X[2],-X[2]))
-gradientList_cuminc <- list( function(X)matrix(c(0,0,1,0),nrow=2),
+JacobianList_cuminc <- list( function(X)matrix(c(0,0,1,0),nrow=2),
                              function(X)matrix(c(0,0,-1,-1),nrow=2) )
                              
-X0_cuminc <- c(0,1)
+X0_cuminc <- matrix(0,1)
 V0_cuminc <- matrix(0,nrow=2,ncol=2)
 
-paramEst_cuminc <- pluginEstimate(n,hazMatrix,F_fun_cuminc,gradientList_cuminc,X0_cuminc,V0_cuminc)
+paramEst_cuminc <- pluginEstimate(n,hazMatrix,F_fun_cuminc,JacobianList_cuminc,X0_cuminc,V0_cuminc)
 
 times <- c(0,dfr$to)
 
-plot(times,paramEst_cuminc$X[1,],type="l",ylab="",xlab="time",main="SDE plugin cumulative incidence estimate",ylim=c(0,0.7))
-lines(times,paramEst_cuminc$X[1,] + 1.96*sqrt(paramEst_cuminc$covariance[1,]),type="s")
-lines(times,paramEst_cuminc$X[1,] - 1.96*sqrt(paramEst_cuminc$covariance[1,]),type="s")
+plot(times,paramEst_cuminc$X[1,],type="s",ylab="",xlab="time",main="SDE plugin cumulative incidence estimate",ylim=c(0,0.7))
+lines(times,paramEst_cuminc$X[1,] + 1.96*sqrt(paramEst_cuminc$covariance[1,1,]),type="s")
+lines(times,paramEst_cuminc$X[1,] - 1.96*sqrt(paramEst_cuminc$covariance[1,1,]),type="s")
 lines(seq(0,10,length.out = 1000),10/1000*cumsum(exp(-seq(0,10,length.out = 1000)*(1 + 1.3))),col=2)
 legend("topright",c("SDE plugin estimates","Exact"),lty=1,col=c(1,2),bty="n")
 
@@ -120,26 +120,26 @@ hazMatrix <- matrix(0,nrow=2,ncol=length(times))
 hazMatrix[1,tmatch1] <- dA1
 hazMatrix[2,tmatch2] <- dA2
 
-F_fun_RelSurv <- function(X)rbind(c(-X[1],X[1]),c(-X[2],0),c(0,-X[3]))
-gradientList_RelSurv <- list(function(X)rbind(c(-1,0,0),c(0,-1,0),c(0,0,0)),
-                             function(X)rbind( c(1,0,0), c(0,0,0), c(0,0,-1) ))
-                             
-X0_RelSurv <- c(1,1,1)
-V0_RelSurv <- matrix(0,nrow=3,ncol=3)
+F_fun_RelSurv <- function(X)matrix(c(-X,X),ncol=2)
+JacobianList_RelSurv <- list(function(X)matrix(-1,nrow=1,ncol=1),
+                             function(X)matrix(1,nrow=1,ncol=1))
+
+X0_RelSurv <- matrix(1,nrow=1,ncol=1)
+V0_RelSurv <- matrix(0,nrow=1,ncol=1)
 
 
-paramEst_relsurv <- pluginEstimate(n,hazMatrix,F_fun_RelSurv,gradientList_RelSurv,X0_RelSurv,V0_RelSurv)
+paramEst_relsurv <- pluginEstimate(n,hazMatrix,F_fun_RelSurv,JacobianList_RelSurv,X0_RelSurv,V0_RelSurv)
 
 
-plot(times,paramEst_relsurv$X[1,],type="l",ylab="",xlab="time",main="SDE plugin relative survival estimate",ylim=c(-1,5.8),xlim=c(0,4))
-lines(times,paramEst_relsurv$X[1,] + 1.96*sqrt(paramEst_relsurv$covariance[1,]),type="s")
-lines(times,paramEst_relsurv$X[1,] - 1.96*sqrt(paramEst_relsurv$covariance[1,]),type="s")
+plot(times,paramEst_relsurv$X[1,],type="s",ylab="",xlab="time",main="SDE plugin relative survival estimate",ylim=c(-1,5.8),xlim=c(0,4))
+lines(times,paramEst_relsurv$X[1,] + 1.96*sqrt(paramEst_relsurv$covariance[1,,]),type="s")
+lines(times,paramEst_relsurv$X[1,] - 1.96*sqrt(paramEst_relsurv$covariance[1,,]),type="s")
 lines(seq(0,10,length.out = 100),exp(seq(0,10,length.out = 100)*(1.3-1)),col=2)
-legend("topright",c("SDE plugin estimates","Exact"),lty=1,col=c(1,2),bty="n")
+legend("topleft",c("SDE plugin estimates","Exact"),lty=1,col=c(1,2),bty="n")
 
 }
 \references{
-Ryalen, P.C., Stensrud, M.J., Røysland, K.: \emph{Transforming cumulative hazards}, unpublished manuscript(2017)
+Ryalen, P.C., Stensrud, M.J., Røysland, K.: \emph{Transforming cumulative hazards}, arXiv:1710.07422, to appear in Biometrika 2018.
 }
 \author{
 Pål Christie Ryalen \email{p.c.ryalen@medisin.uio.no}

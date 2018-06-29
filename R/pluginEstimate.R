@@ -1,13 +1,14 @@
 #' SDE plugin estimator solver
 #' 
-#' @description Calculates recursive estimator for given hazard estimates, integrand function and gradients. Assumes there are no tied event times.
+#' @description Calculates recursive estimator for given hazard estimates, integrand function and gradients.
 #' 
 #' @param n Total number of indiivduals
 #' @param hazMatrix Matrix consisting of hazards(rows) and their increments(columns) along the same time scale
-#' @param F_fun Integrand function for the differential equation system
-#' @param gradientList \code{list} containing derivatives of \code{F_fun}
-#' @param X0 Vector containing initial values for the parameter
+#' @param F_fun Integrand function F = (F_1,F_2,...) for the differential equation system
+#' @param JacobianList The Jacobian matrices of F_1, F_2, ... organized in a \code{list}
+#' @param X0 Matrix containing initial values for the parameter
 #' @param V0 Matrix containing initial values for the variance
+#' @param isLebesgue (Optional, to improve efficientcy) Provide the index of \code{A} (e.g. 2) that is a regular \code{dt} integral, i.e. not a cumulative hazard.
 #' 
 #' @author Pål Christie Ryalen \email{p.c.ryalen@@medisin.uio.no}
 #' 
@@ -35,11 +36,11 @@
 #' 
 #' # Function specification
 #' F_fun_Survival <- function(x)-x
-#' gradientListSurvival <- list(function(x)-1)
+#' JacobianListSurvival <- list(function(x)-1)
 #' X0_Survival <- 1
 #' V0_Survival <- 0
 #' 
-#' paramEst_survival <- pluginEstimate(n,dA,F_fun_Survival,gradientListSurvival,X0_Survival,V0_Survival)
+#' paramEst_survival <- pluginEstimate(n,dA,F_fun_Survival,JacobianListSurvival,X0_Survival,V0_Survival)
 #' 
 #' KM <- cumprod(1 - dA)
 #' Greenwood <- KM^2 * cumsum(dA^2)
@@ -73,13 +74,13 @@
 #' hazMatrix <- rbind(dA1,dA2)
 #' 
 #' F_fun_cuminc <- function(X)rbind(c(X[2],0),c(-X[2],-X[2]))
-#' gradientList_cuminc <- list( function(X)matrix(c(0,0,1,0),nrow=2),
+#' JacobianList_cuminc <- list( function(X)matrix(c(0,0,1,0),nrow=2),
 #'                              function(X)matrix(c(0,0,-1,-1),nrow=2) )
 #'                              
 #' X0_cuminc <- matrix(0,1)
 #' V0_cuminc <- matrix(0,nrow=2,ncol=2)
 #' 
-#' paramEst_cuminc <- pluginEstimate(n,hazMatrix,F_fun_cuminc,gradientList_cuminc,X0_cuminc,V0_cuminc)
+#' paramEst_cuminc <- pluginEstimate(n,hazMatrix,F_fun_cuminc,JacobianList_cuminc,X0_cuminc,V0_cuminc)
 #' 
 #' times <- c(0,dfr$to)
 #' 
@@ -110,14 +111,14 @@
 #' hazMatrix[2,tmatch2] <- dA2
 #' 
 #' F_fun_RelSurv <- function(X)matrix(c(-X,X),ncol=2)
-#' gradientList_RelSurv <- list(function(X)matrix(-1,nrow=1,ncol=1),
+#' JacobianList_RelSurv <- list(function(X)matrix(-1,nrow=1,ncol=1),
 #'                              function(X)matrix(1,nrow=1,ncol=1))
 #' 
 #' X0_RelSurv <- matrix(1,nrow=1,ncol=1)
 #' V0_RelSurv <- matrix(0,nrow=1,ncol=1)
 #' 
 #' 
-#' paramEst_relsurv <- pluginEstimate(n,hazMatrix,F_fun_RelSurv,gradientList_RelSurv,X0_RelSurv,V0_RelSurv)
+#' paramEst_relsurv <- pluginEstimate(n,hazMatrix,F_fun_RelSurv,JacobianList_RelSurv,X0_RelSurv,V0_RelSurv)
 #' 
 #' 
 #' plot(times,paramEst_relsurv$X[1,],type="s",ylab="",xlab="time",main="SDE plugin relative survival estimate",ylim=c(-1,5.8),xlim=c(0,4))
@@ -126,19 +127,19 @@
 #' lines(seq(0,10,length.out = 100),exp(seq(0,10,length.out = 100)*(1.3-1)),col=2)
 #' legend("topleft",c("SDE plugin estimates","Exact"),lty=1,col=c(1,2),bty="n")
 #' 
-#' @references Ryalen, P.C., Stensrud, M.J., Røysland, K.: \emph{Transforming cumulative hazards}, arXiv:1710.07422, to appear in Biometrika 2018.
+#' @references Ryalen, P.C., Stensrud, M.J., Røysland, K.: \emph{Transforming cumulative hazards}, arXiv, to appear in Biometrika 2018.
 #' 
 #' @export
 
 
 
 # Euler solver
-pluginEstimate <- function(n,hazMatrix,F_fun,gradientList,X0,V0,isLebesgue = NULL){
+pluginEstimate <- function(n,hazMatrix,F_fun,JacobianList,X0,V0,isLebesgue = NULL){
         if(is.null(dim(hazMatrix)))
                 hazMatrix <- matrix(hazMatrix,nrow=1)
         
         if(class(V0) != "matrix" | class(F_fun(X0)) != "matrix" |
-           class(gradientList[[1]](V0)) != "matrix" | class(hazMatrix) != "matrix")
+           class(JacobianList[[1]](V0)) != "matrix" | class(hazMatrix) != "matrix")
                 stop("Please provide input on matrix form")
         
         numIncrements <- ncol(hazMatrix)
@@ -152,7 +153,7 @@ pluginEstimate <- function(n,hazMatrix,F_fun,gradientList,X0,V0,isLebesgue = NUL
         XRows <- length(X0)
         hazRows <- nrow(hazMatrix)
         
-        numHaz <- length(gradientList)
+        numHaz <- length(JacobianList)
         
         for(i in 2:numIncrements){
                 X_last <- X[,i-1]
@@ -166,11 +167,15 @@ pluginEstimate <- function(n,hazMatrix,F_fun,gradientList,X0,V0,isLebesgue = NUL
                 
                 # Euler step for covariance V
                 for(j in 1:numHaz){
-                        Vtemp <- Vtemp + (Vn %*% t(gradientList[[j]](X_last)) + gradientList[[j]](X_last) %*% Vn) * hazMatrix[j,i]
+                        Vtemp <- Vtemp + (Vn %*% t(JacobianList[[j]](X_last)) + JacobianList[[j]](X_last) %*% Vn) * hazMatrix[j,i]
                 }
                 
-                # The outer product of the hazard increments
-                dW <- hazMatrix[,i] %o% hazMatrix[,i]
+                # If 'dt' integrals are included, efficientcy can be improved by setting values equal to 0
+                dB <- hazMatrix[,i]
+                dB[isLebesgue] <- 0
+                
+                # The outer product of the increments
+                dW <- dB %o% dB
                 
                 Vn <- Vn + Vtemp + n*FX_mat %*% dW %*% t(FX_mat)
                 V[,,i] <- Vn
