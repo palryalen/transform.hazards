@@ -15,12 +15,12 @@ devtools::install_github("palryalen/transform.hazards", build_vignettes=TRUE).
 You can also download the source from this page and build the package manually.
 
 ### Vignette
-Please find a detailed vignette with worked examples on how to utilize the package using the command ``` devtools::browseVignettes("transform.hazards") ```
+A detailed vignette with worked examples on how to utilize the package can be found using the command ``` browseVignettes("transform.hazards") ```
 
 ## Examples
 
 ```
-devtools::browseVignettes("transform.hazards")
+browseVignettes("transform.hazards")
 
 library(transform.hazards)
 
