@@ -1,0 +1,232 @@
+---
+title: "transform.hazards"
+author: "Pål Ryalen"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{transform.hazards}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+Transforms cumulative hazard estimates to survival parameters specified by differential equations. We demonstrate how the package can be utilized in survival analysis.
+
+
+## Parameters
+
+We are interested in assessing parameters that solve differential equations driven by cumulative hazards $A$, i.e.
+$$X_t = X_0 + \int_0^t F(X_s) dA_s,$$
+where $F = (F_1,F_2,\cdots)$ is Lipschitz, two times continuously differentiable, and satisfies a linear growth bound. Several examples of such parameters can be found in [^fn1] [^fn2]. The main function *pluginEstimate* in this package estimate such parameters nonparametrically using cumulative hazard estimates obtained by Aalens additive hazard model. Among other things, *pluginEstimate* has the following input
+
+- The increments of the cumulative hazard estimates
+- The function $F$
+- The Jacobian matrices of the columns of $F$, i.e. $J_{F_1},J_{F_2},\cdots$, as a list
+
+We illustrate how to provide the correct inputs by use of examples below.
+
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=7, fig.height=5, fig.path='Figs/',
+                      echo=FALSE, warning=FALSE, message=FALSE)
+
+library(timereg)
+library(transform.hazards)
+```
+
+## Survival
+
+The survival function $S$ solves a differential equation with initial value 1;
+$$ S_t = 1 - \int_0^t S_{s} dA_s.$$
+
+We generate a sample of exponentially distributed survival times with 10% independent censoring, and calculate cumulative hazard estimates
+
+```{r, fig.show='hold',results = "hide",echo=T}
+n1 <- 300
+Samp1 <- rexp(n1,1)
+indepCens1 <- sample(0:1,n1,prob=c(0.1,0.9),replace=T)
+startTimes1 <- rep(0,n1)
+
+aaMod1 <- aalen(Surv(startTimes1,Samp1,indepCens1 == 1)~1)
+```
+We want to estimate the survival function. The cumulative hazard estimates are inserted as a time-ordered matrix where each column is an increment of the vector of cumulatie hazard estimates;
+
+```{r, fig.show='hold',results = "hide",echo=T}
+dA_est1 <- diff(c(0,aaMod1$cum[,2]))
+hazMatrix <- matrix(dA_est1,nrow=1)
+```
+
+In this case, $F$ takes the simple form $F(x) = -x$, and its Jacobian is therefore $J_{F}(x) = -1$. These must be provided as matrix-valued functions;
+
+```{r, fig.show='hold',results = "hide",echo=T}
+F_survival <- function(X)matrix(-X,nrow=1,ncol=1)
+F_survival_JacobianList <- list(function(X)matrix(-1,nrow=1,ncol=1))
+```
+
+We obtain plugin estimates of $S$ and its covariance using the call
+
+```{r, fig.show='hold',results = "hide",echo=T}
+param <- pluginEstimate(n1, hazMatrix, F_survival, F_survival_JacobianList,matrix(1,nrow=1,ncol=1),matrix(0,nrow=1,ncol=1))
+```
+ Finally, we may plot the results with approximate 95 % confidence intervals
+ 
+ 
+ ```{r, fig.show='hold', echo=T}
+times1 <- aaMod1$cum[,1]
+plot(times1,param$X,type="s",xlim=c(0,4),xlab="t",ylab="",main="Survival")
+lines(times1,param$X + 1.96 * sqrt(param$covariance[1,1,]),type="s",lty=2)
+lines(times1,param$X - 1.96 * sqrt(param$covariance[1,1,]),type="s",lty=2)
+lines(times1,exp(-times1),col=2)
+legend("topright",c("estimated","exact"),lty=1,col=c(1,2),bty="n")
+```
+
+## Restricted mean survival
+
+The restricted mean survival function $R$ solves the system
+$$ \begin{pmatrix} S_t \\ R_t \end{pmatrix} = \begin{pmatrix}1 \\ 0 \end{pmatrix} + \int_0^t \begin{pmatrix} -S_{s} & 0 \\ 0 & S_s \end{pmatrix}d \begin{pmatrix}A_s \\ s \end{pmatrix},$$
+
+where $S$ is the survival function. Here, the colums of $F$, $F_1$ and $F_2$, are given by
+$$ F_1(x_1,x_2) = \begin{pmatrix} -x_1 \\ 0 \end{pmatrix}, F_2(x_1,x_2) = \begin{pmatrix} 0 \\ x_1 \end{pmatrix}.$$
+The Jacobian matrices are therefore
+$$ J_{F_1}(x_1,x_2) = \begin{pmatrix} -1 & 0 \\ 0 & 0 \end{pmatrix}, J_{F_2}(x_1,x_2) = \begin{pmatrix} 0 & 0 \\ 1 & 0 \end{pmatrix}. $$
+We define these along with initial values below
+```{r, fig.show='hold',results = "hide",echo=T}
+F_restrict <- function(X)matrix(c(-X[1],0,0,X[1]),nrow=2)
+F_restrict_JacobianList <- list(function(X)matrix(c(-1,0,0,0),nrow=2),
+                                function(X)matrix(c(0,0,1,0),nrow=2,byrow=T))
+
+X0_restrict <- matrix(c(1,0),nrow=2)
+V0_restrict <- matrix(0,nrow=2,ncol=2)
+```
+
+The restricted mean survival is a 'regular' (i.e. Lebesgue) integral, and we must therefore provide the time increments. We choose the time interval $[0,4]$ in $10^4$ increments:
+
+```{r, fig.show='hold',results = "hide",echo=T}
+fimeTimes <- seq(0,4,length.out = 1e4+1)
+
+tms <- sort(unique(c(fimeTimes,times1)))
+
+hazMatrix <- matrix(0,nrow=2,ncol=length(tms))
+hazMatrix[1,match(times1,tms)] <- dA_est1
+hazMatrix[2,] <- diff(c(0,tms))
+```
+
+We obtain plugin estimates using the call (note the last argument that in this example can be used to improve efficiency);
+
+```{r, fig.show='hold',results = "hide",echo=T}
+param <- pluginEstimate(n1, hazMatrix, F_restrict, F_restrict_JacobianList,X0_restrict,V0_restrict,isLebesgue = 2)
+```
+
+We plot the results
+```{r, fig.show='hold', echo=T}
+plot(tms,param$X[2,],type="s",xlim=c(0,4),ylim=c(0,1.5),xlab="t",ylab="",main="Restricted mean survival")
+lines(tms,param$X[2,] + 1.96 * sqrt(param$covariance[2,2,]),type="s",lty=2)
+lines(tms,param$X[2,] - 1.96 * sqrt(param$covariance[2,2,]),type="s",lty=2)
+lines(tms,1 - exp(-tms),col=2)
+legend("topleft",c("estimated","exact"),lty=1,col=c(1,2),bty="n")
+
+```
+
+
+## Relative survival
+
+We generate another set of exponentially distributed survival times and compare the two groups. A new matrix of cumulative hazard increments must be created;
+
+```{r, fig.show='hold',results = "hide",echo=T}
+n2 <- 200
+Samp2 <- rexp(n2,1.3)
+indepCens2 <- sample(0:1,n2,prob=c(0.1,0.9),replace=T)
+startTimes2 <- rep(0,n2)
+
+aaMod2 <- aalen(Surv(startTimes2,Samp2,indepCens2 == 1)~1)
+dA_est2 <- diff(c(0,aaMod2$cum[,2]))
+
+times2 <- aaMod2$cum[,1]
+times <- sort(unique(c(times1,times2)))
+
+hazMatrix <- matrix(0,nrow=2,ncol=length(times))
+hazMatrix[1,match(times1,times)] <- dA_est1
+hazMatrix[2,match(times2,times)] <- dA_est2
+```
+The relative survival function $RS$ between groups 1 and 2 solve the equation
+$$ RS_t = 1 + \int_0^t \begin{pmatrix} -RS_s & RS_s\end{pmatrix} d\begin{pmatrix} A_s^1 \\ A_s^2 \end{pmatrix}, $$
+
+i.e. $F(x) = (-x,x)$. The Jacobians of the columns of $F$ are $J_{F_1}(x) = -1$, and $J_{F_2}(x) = 1$. We specify these functions as follows:
+
+```{r, fig.show='hold',results = "hide",echo=T}
+F_relsurv <- function(X)matrix(c(-X,X),nrow=1)
+F_relsurv_JacobianList <- list(function(X)matrix(-1,nrow=1),
+                               function(X)matrix(1,nrow=1))
+```
+
+The estimates are then obtained by the call
+
+```{r, fig.show='hold',results = "hide",echo=T}
+param <- pluginEstimate(n1+n2, hazMatrix, F_relsurv, F_relsurv_JacobianList,matrix(1,nrow=1,ncol=1),matrix(0,nrow=1,ncol=1))
+```
+ 
+ We may plot the results with approximate 95% confidence intervals
+ 
+ 
+ ```{r, fig.show='hold', echo=T}
+plot(times,param$X,type="s",xlim=c(0,4),ylim=c(-0.5,4),xlab="t",ylab="",main="Relative survival")
+lines(times,param$X + 1.96 * sqrt(param$covariance[1,1,]),type="s",lty=2)
+lines(times,param$X - 1.96 * sqrt(param$covariance[1,1,]),type="s",lty=2)
+lines(times,exp(-times*(1/1.3 - 1)),col=2)
+legend("topleft",c("estimated","exact"),lty=1,col=c(1,2),bty="n")
+
+```
+
+## Cumulative incidence
+We may be in a situation with two competing risks. The cumulative incidences $C^1,C^2$ solve the system
+$$ \begin{pmatrix} S_t \\ C_t^1 \\ C_t^2 \end{pmatrix} = \begin{pmatrix} 1 \\ 0 \\0 \end{pmatrix} + \int_0^t \begin{pmatrix} -S_s & -S_s \\ S_s & 0 \\ 0 & S_s \end{pmatrix} d \begin{pmatrix} A^1_s \\ A^2_s \end{pmatrix}, $$
+where $S$ is the survival. The first columns of $F$ are
+
+$$F_1(x_1,x_2,x_2) = \begin{pmatrix} -x_1 \\x_1 \\ 0 \end{pmatrix},  F_2(x_1,x_2,x_2) = \begin{pmatrix} -x_1 \\ 0 \\ x_1 \end{pmatrix} $$ 
+
+The reader may verify that the Jacobian matrix of $F_1$ and $F_1$ are
+$$ J_{F_1}(x_1,x_2,x_3) = \begin{pmatrix} -1 & 0 & 0 \\1 & 0 & 0 \\ 0 & 0 & 0 \end{pmatrix} , J_{F_2}(x_1,x_2,x_3) = \begin{pmatrix} -1 & 0 & 0 \\0 & 0 & 0 \\ 1 & 0 & 0 \end{pmatrix} $$
+
+We specify the function $F$ and the list of the Jacobian matrices below, along with the initial values:
+```{r, fig.show='hold',results = "hide",echo=T}
+F_cuminc <- function(X)matrix(c(-X[1],-X[1],X[1],0,0,X[1]),nrow=3,byrow=T)
+F_cuminc_JacobianList <- list(function(X)matrix(c(-1,0,0,1,0,0,0,0,0),nrow=3,byrow=T),
+                               function(X)matrix(c(-1,0,0,0,0,0,1,0,0),nrow=3,byrow=T))
+X0_cuminc <- matrix(c(1,0,0),nrow=3)
+v0_cuminc <- matrix(0,nrow=3,ncol=3)
+```
+
+Now for obtaining hazard estimates. For the purpose of this presentation we re-use the data that is already generated:
+
+```{r, fig.show='hold',results = "hide",echo=T}
+# Generate the data
+dfr <- data.frame(from=0,to=c(Samp1,Samp2),from.state = 1,to.state = c(rep(2,n1),rep(3,n2)))
+dfr$group <- 0
+dfr$group[dfr$to.state == 3] <- 1
+# Add censoring
+dfr$to.state[c(indepCens1,indepCens2) == 0] <- 0
+
+# Obtaining cumulative hazard estimates and extracting the increments
+aaMod3 <- aalen(Surv(from,to,to.state %in% c(2,3)) ~1 + group, data=dfr )
+hazMatrix <- rbind( diff(c(0,aaMod3$cum[,2])) , diff( c(0, apply(aaMod3$cum[,-1],1,sum) )))
+
+# Transforming the estimates
+param <- pluginEstimate(n1+n2,hazMatrix,F_cuminc,F_cuminc_JacobianList,X0_cuminc,v0_cuminc)
+```
+
+Finally, we plot the estimates of $C^1$ and $C^2$, with confidence intervals:
+
+ ```{r, fig.show='hold', echo=T}
+times <- aaMod3$cum[,1]
+plot(times,param$X[2,],type="s",xlim=c(0,4),ylim=c(0,1),xlab="t",ylab="",main="Cumulative incidence")
+lines(times,param$X[2,] + 1.96 * sqrt(param$covariance[2,2,]),type="s",lty=2)
+lines(times,param$X[2,] - 1.96 * sqrt(param$covariance[2,2,]),type="s",lty=2)
+lines(times,param$X[3,],type="s",col=3)
+lines(times,param$X[3,] + 1.96 * sqrt(param$covariance[3,3,]),type="s",lty=2,col=3)
+lines(times,param$X[3,] - 1.96 * sqrt(param$covariance[3,3,]),type="s",lty=2,col=3)
+legend("topleft",c(expression(C^1),expression(C^2)),lty=1,col=c(1,3),bty="n")
+```
+
+
+[^fn1]: [Transforming cumulative hazard estimates](https://arxiv.org/abs/1710.07422), to appear in Biometrika, 2018.
+[^fn2]: On null hypothesis in survival analysis, unpublished manuscript.
