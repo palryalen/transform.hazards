@@ -4,7 +4,8 @@
 \alias{pluginEstimate}
 \title{SDE plugin estimator solver}
 \usage{
-pluginEstimate(n, hazMatrix, F_fun, JacobianList, X0, V0, isLebesgue = NULL)
+pluginEstimate(n, hazMatrix, F_fun, JacobianList, X0, V0,
+  isLebesgue = NULL)
 }
 \arguments{
 \item{n}{Total number of indiivduals}
@@ -15,9 +16,11 @@ pluginEstimate(n, hazMatrix, F_fun, JacobianList, X0, V0, isLebesgue = NULL)
 
 \item{JacobianList}{The Jacobian matrices of F_1, F_2, ... organized in a \code{list}}
 
-\item{X0}{Vector containing initial values for the parameter}
+\item{X0}{Matrix containing initial values for the parameter}
 
 \item{V0}{Matrix containing initial values for the variance}
+
+\item{isLebesgue}{(Optional, to improve efficientcy) Provide the index of \code{A} (e.g. 2) that is a regular \code{dt} integral, i.e. not a cumulative hazard.}
 }
 \value{
 \code{list} containing the parameter estimate \code{X}, and its covariance estimates \code{V/n}
@@ -42,13 +45,13 @@ dN <- fit$n.event
 Y <- fit$n.risk
 Y[1] <- n
 
-dA <- dN/Y
+dA <- matrix(dN/Y,nrow=1,ncol=length(dN))
 
 # Function specification
-F_fun_Survival <- function(x)-x
-JacobianListSurvival <- list(function(x)-1)
-X0_Survival <- 1
-V0_Survival <- 0
+F_fun_Survival <- function(x)-matrix(x,1,1)
+JacobianListSurvival <- list(function(x)-matrix(1,1,1))
+X0_Survival <- matrix(1,1,1)
+V0_Survival <- matrix(0,1,1)
 
 paramEst_survival <- pluginEstimate(n,dA,F_fun_Survival,JacobianListSurvival,X0_Survival,V0_Survival)
 
@@ -56,8 +59,8 @@ KM <- cumprod(1 - dA)
 Greenwood <- KM^2 * cumsum(dA^2)
 
 plot(times,paramEst_survival$X,type="s",main="SDE plugin survival estimates",ylab="",xlab="time")
-lines(times,paramEst_survival$X + 1.96*sqrt(paramEst_survival$covariance),type="s")
-lines(times,paramEst_survival$X - 1.96*sqrt(paramEst_survival$covariance),type="s")
+lines(times,paramEst_survival$X + 1.96*sqrt(paramEst_survival$covariance[1,1,]),type="s")
+lines(times,paramEst_survival$X - 1.96*sqrt(paramEst_survival$covariance[1,1,]),type="s")
 lines(seq(0,10,length.out=100),exp(-seq(0,10,length.out=100)),col=2)
 legend("topright",c("SDE plugin estimates","Exact"),lty=1,col=c(1,2),bty="n")
 
@@ -86,8 +89,8 @@ hazMatrix <- rbind(dA1,dA2)
 F_fun_cuminc <- function(X)rbind(c(X[2],0),c(-X[2],-X[2]))
 JacobianList_cuminc <- list( function(X)matrix(c(0,0,1,0),nrow=2),
                              function(X)matrix(c(0,0,-1,-1),nrow=2) )
-                             
-X0_cuminc <- matrix(0,1)
+
+X0_cuminc <- matrix(c(0,1),nrow=2,ncol=1)
 V0_cuminc <- matrix(0,nrow=2,ncol=2)
 
 paramEst_cuminc <- pluginEstimate(n,hazMatrix,F_fun_cuminc,JacobianList_cuminc,X0_cuminc,V0_cuminc)
@@ -139,7 +142,7 @@ legend("topleft",c("SDE plugin estimates","Exact"),lty=1,col=c(1,2),bty="n")
 
 }
 \references{
-Ryalen, P.C., Stensrud, M.J., Røysland, K.: \emph{Transforming cumulative hazards}, arXiv:1710.07422, to appear in Biometrika 2018.
+Ryalen, P.C., Stensrud, M.J., Røysland, K.: \emph{Transforming cumulative hazards}, arXiv, to appear in Biometrika 2018.
 }
 \author{
 Pål Christie Ryalen \email{p.c.ryalen@medisin.uio.no}
