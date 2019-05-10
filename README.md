@@ -1,8 +1,3 @@
----
-output:
-  html_document: default
-  pdf_document: default
----
 # transform.hazards
 
 ```R``` package for transforming cumulative hazard estimates from Aalens additive hazard model<sup>[1](#transforming)</sup>.
@@ -19,7 +14,7 @@ devtools::install_github("palryalen/transform.hazards", build_vignettes=TRUE).
 ```
 You can also download the source from this page and build the package manually.
 
-<span style="color:red">NB! With devtools 2.0.0, devtools::install_github("repository", build_vignettes = TRUE) no longer builds the vignettes. In that case, use the following command: </span>
+<font color="red">NB! With devtools 2.0.0, devtools::install_github("repository", build_vignettes = TRUE) no longer builds the vignettes. In that case, use the following command:</font>
 
 ```
 devtools::install_github("palryalen/transform.hazards", build_opts = c("--no-resave-data", "--no-manual")).
