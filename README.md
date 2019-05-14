@@ -23,6 +23,7 @@ devtools::install_github("palryalen/transform.hazards", build_opts = c("--no-res
 ### Vignette
 A detailed vignette with worked examples on how to utilize the package can be found using the command ``` browseVignettes("transform.hazards") ```
 
+NB! It has been brough ty my attention that the vignette doesn't compile properly for some R versions (e.g 3.2.3). I am currently looking into the issue.
 ## Examples
 
 ```

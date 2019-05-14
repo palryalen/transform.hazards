@@ -183,13 +183,13 @@ legend("topleft",c("estimated","exact"),lty=1,col=c(1,2),bty="n")
 
 ## Cumulative incidence
 We may be in a situation with two competing risks. The cumulative incidences $C^1,C^2$ solve the system
-$$ \begin{pmatrix} S_t \\ C_t^1 \\ C_t^2 \end{pmatrix} = \begin{pmatrix} 1 \\ 0 \\0 \end{pmatrix} + \int_0^t \begin{pmatrix} -S_s & -S_s \\ S_s & 0 \\ 0 & S_s \end{pmatrix} d \begin{pmatrix} A^1_s \\ A^2_s \end{pmatrix}, $$
+$$ \begin{pmatrix} S_t \\ C_t^1 \\ C_t^2 \end{pmatrix} = \begin{pmatrix} 1 \\ 0 \\ 0 \end{pmatrix} + \int_0^t \begin{pmatrix} -S_s & -S_s \\ S_s & 0 \\ 0 & S_s \end{pmatrix} d \begin{pmatrix} A^1_s \\ A^2_s \end{pmatrix}, $$
 where $S$ is the survival. The first columns of $F$ are
 
-$$F_1(x_1,x_2,x_2) = \begin{pmatrix} -x_1 \\x_1 \\ 0 \end{pmatrix},  F_2(x_1,x_2,x_2) = \begin{pmatrix} -x_1 \\ 0 \\ x_1 \end{pmatrix} $$ 
+$$F_1(x_1,x_2,x_2) = \begin{pmatrix} -x_1 \\ x_1 \\ 0 \end{pmatrix},  F_2(x_1,x_2,x_2) = \begin{pmatrix} -x_1 \\ 0 \\ x_1 \end{pmatrix} $$ 
 
 The reader may verify that the Jacobian matrix of $F_1$ and $F_1$ are
-$$ J_{F_1}(x_1,x_2,x_3) = \begin{pmatrix} -1 & 0 & 0 \\1 & 0 & 0 \\ 0 & 0 & 0 \end{pmatrix} , J_{F_2}(x_1,x_2,x_3) = \begin{pmatrix} -1 & 0 & 0 \\0 & 0 & 0 \\ 1 & 0 & 0 \end{pmatrix} $$
+$$ J_{F_1}(x_1,x_2,x_3) = \begin{pmatrix} -1 & 0 & 0 \\ 1 & 0 & 0 \\ 0 & 0 & 0 \end{pmatrix} , J_{F_2}(x_1,x_2,x_3) = \begin{pmatrix} -1 & 0 & 0 \\ 0 & 0 & 0 \\ 1 & 0 & 0 \end{pmatrix} $$
 
 We specify the function $F$ and the list of the Jacobian matrices below, along with the initial values:
 ```{r, fig.show='hold',results = "hide",echo=T}
