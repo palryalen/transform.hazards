@@ -1,6 +1,6 @@
 # transform.hazards
 
-```R``` package for transforming cumulative hazard estimates from Aalens additive hazard model<sup>[1](#transforming)</sup>.
+```R``` package for transforming cumulative hazard estimates for obtaining a range of other parameters in survival analysis<sup>[1](#transforming)</sup>.
 
 ## Getting Started
 

@@ -10,14 +10,14 @@ vignette: >
 ---
 
 
-Transforms cumulative hazard estimates to survival parameters specified by differential equations. We demonstrate how the package can be utilized in survival analysis.
+Transforms cumulative hazard estimates to estimate survival analysis parameters specified by differential equations. We demonstrate how the method works om some commonly studied parameters.
 
 
 ## Parameters
 
 We are interested in assessing parameters that solve differential equations driven by cumulative hazards $A$, i.e.
 $$X_t = X_0 + \int_0^t F(X_s) dA_s,$$
-where $F = (F_1,F_2,\cdots)$ is Lipschitz, two times continuously differentiable, and satisfies a linear growth bound. Several examples of such parameters can be found in [^fn1] [^fn2]. The main function *pluginEstimate* in this package estimate such parameters nonparametrically using cumulative hazard estimates obtained by Aalens additive hazard model. Among other things, *pluginEstimate* has the following input
+where $F = (F_1,F_2,\cdots)$ is Lipschitz, two times continuously differentiable, and satisfies a linear growth bound. Several examples of such parameters can be found in [^fn1] [^fn2]. The main function *pluginEstimate* in this package estimate such parameters. Among other things, *pluginEstimate* has the following input
 
 - The increments of the cumulative hazard estimates
 - The function $F$
@@ -39,15 +39,17 @@ library(transform.hazards)
 The survival function $S$ solves a differential equation with initial value 1;
 $$ S_t = 1 - \int_0^t S_{s} dA_s.$$
 
-We generate a sample of exponentially distributed survival times with 10% independent censoring, and calculate cumulative hazard estimates
+We generate a sample of exponentially distributed survival times with independent censoring, and calculate cumulative hazard estimates
 
 ```{r, fig.show='hold',results = "hide",echo=T}
 n1 <- 300
 Samp1 <- rexp(n1,1)
-indepCens1 <- sample(0:1,n1,prob=c(0.1,0.9),replace=T)
+cTimes <- runif(n1)*4
+Samp1 <- pmin(Samp1,cTimes)
+isNotCensored <- cTimes != Samp1
 startTimes1 <- rep(0,n1)
 
-aaMod1 <- aalen(Surv(startTimes1,Samp1,indepCens1 == 1)~1)
+aaMod1 <- aalen(Surv(startTimes1,Samp1,isNotCensored)~1)
 ```
 We want to estimate the survival function. The cumulative hazard estimates are inserted as a time-ordered matrix where each column is an increment of the vector of cumulatie hazard estimates;
 
@@ -135,10 +137,12 @@ We generate another set of exponentially distributed survival times and compare 
 ```{r, fig.show='hold',results = "hide",echo=T}
 n2 <- 200
 Samp2 <- rexp(n2,1.3)
-indepCens2 <- sample(0:1,n2,prob=c(0.1,0.9),replace=T)
+censTimes2 <- runif(n2)*3
+Samp2 <- pmin(Samp2,censTimes2)
+isNotCensored2 <- censTimes2 != Samp2
 startTimes2 <- rep(0,n2)
 
-aaMod2 <- aalen(Surv(startTimes2,Samp2,indepCens2 == 1)~1)
+aaMod2 <- aalen(Surv(startTimes2,Samp2,isNotCensored2)~1)
 dA_est2 <- diff(c(0,aaMod2$cum[,2]))
 
 times2 <- aaMod2$cum[,1]
@@ -204,7 +208,7 @@ dfr <- data.frame(from=0,to=c(Samp1,Samp2),from.state = 1,to.state = c(rep(2,n1)
 dfr$group <- 0
 dfr$group[dfr$to.state == 3] <- 1
 # Add censoring
-dfr$to.state[c(indepCens1,indepCens2) == 0] <- 0
+dfr$to.state[c(isNotCensored,isNotCensored2)==F] <- 0
 
 # Obtaining cumulative hazard estimates and extracting the increments
 aaMod3 <- aalen(Surv(from,to,to.state %in% c(2,3)) ~1 + group, data=dfr )
