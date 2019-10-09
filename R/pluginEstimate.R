@@ -74,8 +74,8 @@
 #' hazMatrix <- rbind(dA1,dA2)
 #' 
 #' F_fun_cuminc <- function(X)rbind(c(X[2],0),c(-X[2],-X[2]))
-#' JacobianList_cuminc <- list( function(X)matrix(c(0,0,1,0),nrow=2),
-#'                              function(X)matrix(c(0,0,-1,-1),nrow=2) )
+#' JacobianList_cuminc <- list( function(X)matrix(c(0,0,1,-1),nrow=2),
+#'                              function(X)matrix(c(0,0,0,-1),nrow=2) )
 #' 
 #' X0_cuminc <- matrix(c(0,1),nrow=2,ncol=1)
 #' V0_cuminc <- matrix(0,nrow=2,ncol=2)
