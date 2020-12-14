@@ -138,9 +138,9 @@ pluginEstimate <- function(n,hazMatrix,F_fun,JacobianList,X0,V0,isLebesgue = NUL
         if(is.null(dim(hazMatrix)))
                 hazMatrix <- matrix(hazMatrix,nrow=1)
         
-        if(class(V0) != "matrix" | class(F_fun(X0)) != "matrix" |
-           class(JacobianList[[1]](V0)) != "matrix" | class(hazMatrix) != "matrix")
-                stop("Please provide input on matrix form")
+        if( !( "matrix" %in% class(V0) & "matrix" %in% class(F_fun(X0)) &
+                 "matrix" %in% class(JacobianList[[1]](V0)) & "matrix" %in%  class(hazMatrix) ) )
+        stop("Please provide all input on matrix form")
         
         numIncrements <- ncol(hazMatrix)
         X <- matrix(0,nrow=length(X0),ncol=numIncrements)
