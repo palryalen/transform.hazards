@@ -73,7 +73,7 @@ param <- pluginEstimate(n1, hazMatrix, F_survival, F_survival_JacobianList,matri
  Finally, we may plot the results with approximate 95 % confidence intervals
  
  
- ```{r, fig.show='hold', echo=T}
+```{r, fig.show='hold', echo=T}
 times1 <- aaMod1$cum[,1]
 plot(times1,param$X,type="s",xlim=c(0,4),xlab="t",ylab="",main="Survival")
 lines(times1,param$X + 1.96 * sqrt(param$covariance[1,1,]),type="s",lty=2)
@@ -172,7 +172,7 @@ param <- pluginEstimate(n1+n2, hazMatrix, F_relsurv, F_relsurv_JacobianList,matr
  We may plot the results with approximate 95% confidence intervals
  
  
- ```{r, fig.show='hold', echo=T}
+```{r, fig.show='hold', echo=T}
 plot(times,param$X,type="s",xlim=c(0,4),ylim=c(-0.5,4),xlab="t",ylab="",main="Relative survival")
 lines(times,param$X + 1.96 * sqrt(param$covariance[1,1,]),type="s",lty=2)
 lines(times,param$X - 1.96 * sqrt(param$covariance[1,1,]),type="s",lty=2)
@@ -200,28 +200,33 @@ X0_cuminc <- matrix(c(1,0,0),nrow=3)
 v0_cuminc <- matrix(0,nrow=3,ncol=3)
 ```
 
-Now for obtaining hazard estimates. For the purpose of this presentation we re-use the data that is already generated:
+Now for obtaining hazard estimates. We generate survival times first, before sampling two causes of death (and censoring). We then estimate the cause-specific cumulative hazards, and transform the estimates:
 
 ```{r, fig.show='hold',results = "hide",echo=T}
 # Generate the data
-dfr <- data.frame(from=0,to=c(Samp1,Samp2),from.state = 1,to.state = c(rep(2,n1),rep(3,n2)))
-dfr$group <- 0
-dfr$group[dfr$to.state == 3] <- 1
-# Add censoring
-dfr$to.state[c(isNotCensored,isNotCensored2)==F] <- 0
+dfr <- data.frame(from=0,to=rexp(n1+n2,1),from.state = 1)
 
-# Obtaining cumulative hazard estimates and extracting the increments
-aaMod3 <- aalen(Surv(from,to,to.state %in% c(2,3)) ~1 + group, data=dfr )
-hazMatrix <- rbind( diff(c(0,aaMod3$cum[,2])) , diff( c(0, apply(aaMod3$cum[,-1],1,sum) )))
+# Adding causes of death (to.state = 2 or 3) and censoring (to.state = 0)
+dfr$to.state <- sample(c(0,2,3),n1+n2,replace=T,prob=c(0.2,0.2,0.6))
+
+
+# Obtaining cause-specific cumulative hazard estimates and extracting the increments
+aamod22 <- aalen(Surv(from,to,to.state %in% c(2)) ~1, data=dfr)
+aamod33 <- aalen(Surv(from,to,to.state %in% c(3)) ~1, data=dfr)
+times = sort(unique(c(aamod22$cum[,1],aamod33$cum[,1])))
+hazMatrix = matrix(0,nrow=2,ncol=length(times))
+mt1 = match(aamod22$cum[,1],times)
+mt2 = match(aamod33$cum[,1],times)
+hazMatrix[1,mt1] = diff(c(0, aamod22$cum[,2] ))
+hazMatrix[2,mt2] = diff(c(0, aamod33$cum[,2] ))
 
 # Transforming the estimates
 param <- pluginEstimate(n1+n2,hazMatrix,F_cuminc,F_cuminc_JacobianList,X0_cuminc,v0_cuminc)
 ```
 
-Finally, we plot the estimates of $C^1$ and $C^2$, with confidence intervals:
+Finally, we plot the estimates of the cumulative incidences $C^1$ and $C^2$ with confidence intervals:
 
- ```{r, fig.show='hold', echo=T}
-times <- aaMod3$cum[,1]
+```{r, fig.show='hold', echo=T}
 plot(times,param$X[2,],type="s",xlim=c(0,4),ylim=c(0,1),xlab="t",ylab="",main="Cumulative incidence")
 lines(times,param$X[2,] + 1.96 * sqrt(param$covariance[2,2,]),type="s",lty=2)
 lines(times,param$X[2,] - 1.96 * sqrt(param$covariance[2,2,]),type="s",lty=2)
@@ -232,5 +237,5 @@ legend("topleft",c(expression(C^1),expression(C^2)),lty=1,col=c(1,3),bty="n")
 ```
 
 
-[^fn1]: [Transforming cumulative hazard estimates](https://arxiv.org/abs/1710.07422), to appear in Biometrika, 2018.
-[^fn2]: On null hypothesis in survival analysis, unpublished manuscript.
+[^fn1]: [Transforming cumulative hazard estimates] (Biometrika, 2018).
+[^fn2]: [On null hypothesis in survival analysis] (Biomatrics, 2019) 

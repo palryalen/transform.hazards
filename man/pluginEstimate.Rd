@@ -72,17 +72,23 @@ legend("topright",c("SDE plugin estimates","Greenwood"),lty=1,col=c(1,4),bty="n"
 ############ Competing risks and Cumulative incidence(two states) ###############
 #################################################################################
 
-n <- 200
+n <- 300
 x1 <- rexp(n,1)
 x2 <- rexp(n,1.3)
-to.states <- ifelse(x1<x2,0,1)
+to.states <- ifelse(x1<x2,2,3)
 
-dfr <- data.frame(from=0,to=c(x1[to.states==0],x2[to.states==1]),to.state=to.states)
-dfr <- dfr[order(dfr$to),]
+dfr <- data.frame(from=0,to=c(x1[to.states==2],x2[to.states==3]),to.state=to.states)
 
-nrisk <- c(n,n:1)
-dA1 <- c(0,1*(dfr$to.state==0))/nrisk
-dA2 <- c(0,1*(dfr$to.state==1))/nrisk
+aaFit1 = aalen(Surv(from,to,to.state==2)~1,data=dfr)
+aaFit2 = aalen(Surv(from,to,to.state==3)~1,data=dfr)
+
+times <- sort(unique(c(aaFit1$cum[,1],aaFit2$cum[,1])))
+mt1 = match(aaFit1$cum[,1],times)
+mt2 = match(aaFit2$cum[,1],times)
+
+dA1 = dA2 = rep(0,length(times))
+dA1[mt1] = diff(c(0, aaFit1$cum[,2] ))
+dA2[mt2] = diff(c(0, aaFit2$cum[,2] ))
 
 hazMatrix <- rbind(dA1,dA2)
 
@@ -95,7 +101,7 @@ V0_cuminc <- matrix(0,nrow=2,ncol=2)
 
 paramEst_cuminc <- pluginEstimate(n,hazMatrix,F_fun_cuminc,JacobianList_cuminc,X0_cuminc,V0_cuminc)
 
-times <- c(0,dfr$to)
+
 
 plot(times,paramEst_cuminc$X[1,],type="s",ylab="",xlab="time",main="SDE plugin cumulative incidence estimate",ylim=c(0,0.7))
 lines(times,paramEst_cuminc$X[1,] + 1.96*sqrt(paramEst_cuminc$covariance[1,1,]),type="s")
