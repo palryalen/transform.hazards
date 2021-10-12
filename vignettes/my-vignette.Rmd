@@ -237,5 +237,5 @@ legend("topleft",c(expression(C^1),expression(C^2)),lty=1,col=c(1,3),bty="n")
 ```
 
 
-[^fn1]: [Transforming cumulative hazard estimates] (Biometrika, 2018).
-[^fn2]: [On null hypothesis in survival analysis] (Biomatrics, 2019) 
+[^fn1]: [Transforming cumulative hazard estimates] (Bioaetrika, 2018).
+[^fn2]: [On null hypothesis in survival analysis] (Biometrics, 2019) 
