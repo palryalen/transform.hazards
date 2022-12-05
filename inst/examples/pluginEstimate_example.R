@@ -21,18 +21,26 @@ JacobianListSurvival <- list(function(x)-matrix(1,1,1))
 X0_Survival <- matrix(1,1,1)
 V0_Survival <- matrix(0,1,1)
 
-paramEst_survival <- pluginEstimate(n,dA,F_fun_Survival,JacobianListSurvival,X0_Survival,V0_Survival)
+paramEst_survival <- pluginEstimate(
+  n,dA,F_fun_Survival,JacobianListSurvival,X0_Survival,V0_Survival
+)
 
 KM <- cumprod(1 - dA)
 Greenwood <- KM^2 * cumsum(dA^2)
 
-plot(times,paramEst_survival$X,type="s",main="SDE plugin survival estimates",ylab="",xlab="time")
+plot(
+  times,paramEst_survival$X,type="s",main="SDE plugin survival estimates",
+  ylab="",xlab="time"
+)
 lines(times,paramEst_survival$X + 1.96*sqrt(paramEst_survival$covariance[1,1,]),type="s")
 lines(times,paramEst_survival$X - 1.96*sqrt(paramEst_survival$covariance[1,1,]),type="s")
 lines(seq(0,10,length.out=100),exp(-seq(0,10,length.out=100)),col=2)
 legend("topright",c("SDE plugin estimates","Exact"),lty=1,col=c(1,2),bty="n")
 
-plot(times,paramEst_survival$covariance,type="s",main="SDE plugin variance vs Greenwood variance",ylab="",xlab="time")
+plot(
+  times,paramEst_survival$covariance,type="s",
+  main="SDE plugin variance vs Greenwood variance",ylab="",xlab="time"
+)
 lines(times,Greenwood,type="s",col=4,lty=1)
 legend("topright",c("SDE plugin estimates","Greenwood"),lty=1,col=c(1,4),bty="n")
 
@@ -65,7 +73,10 @@ paramEst_cuminc <- pluginEstimate(n,hazMatrix,F_fun_cuminc,JacobianList_cuminc,X
 
 times <- c(0,dfr$to)
 
-plot(times,paramEst_cuminc$X[1,],type="s",ylab="",xlab="time",main="SDE plugin cumulative incidence estimate",ylim=c(0,0.7))
+plot(
+  times,paramEst_cuminc$X[1,],type="s",ylab="",xlab="time",
+  main="SDE plugin cumulative incidence estimate",ylim=c(0,0.7)
+)
 lines(times,paramEst_cuminc$X[1,] + 1.96*sqrt(paramEst_cuminc$covariance[1,1,]),type="s")
 lines(times,paramEst_cuminc$X[1,] - 1.96*sqrt(paramEst_cuminc$covariance[1,1,]),type="s")
 lines(seq(0,10,length.out = 1000),10/1000*cumsum(exp(-seq(0,10,length.out = 1000)*(1 + 1.3))),col=2)
@@ -99,10 +110,15 @@ X0_RelSurv <- matrix(1,nrow=1,ncol=1)
 V0_RelSurv <- matrix(0,nrow=1,ncol=1)
 
 
-paramEst_relsurv <- pluginEstimate(n,hazMatrix,F_fun_RelSurv,JacobianList_RelSurv,X0_RelSurv,V0_RelSurv)
+paramEst_relsurv <- pluginEstimate(
+  n,hazMatrix,F_fun_RelSurv,JacobianList_RelSurv,X0_RelSurv,V0_RelSurv
+)
 
 
-plot(times,paramEst_relsurv$X[1,],type="s",ylab="",xlab="time",main="SDE plugin relative survival estimate",ylim=c(-1,5.8),xlim=c(0,4))
+plot(
+  times,paramEst_relsurv$X[1,],type="s",ylab="",xlab="time",
+  main="SDE plugin relative survival estimate",ylim=c(-1,5.8),xlim=c(0,4)
+)
 lines(times,paramEst_relsurv$X[1,] + 1.96*sqrt(paramEst_relsurv$covariance[1,,]),type="s")
 lines(times,paramEst_relsurv$X[1,] - 1.96*sqrt(paramEst_relsurv$covariance[1,,]),type="s")
 lines(seq(0,10,length.out = 100),exp(seq(0,10,length.out = 100)*(1.3-1)),col=2)
