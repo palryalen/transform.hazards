@@ -10,7 +10,6 @@ Suggests:
 	timereg,
     knitr,
     rmarkdown
-LazyData: TRUE
 RoxygenNote: 7.2.1
 Encoding: UTF-8
 VignetteBuilder: knitr
