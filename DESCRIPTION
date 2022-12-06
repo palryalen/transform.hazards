@@ -2,8 +2,8 @@ Package: transform.hazards
 Type: Package
 Title: Transforms Cumulative Hazards to Parameter Specified by ODE System
 Version: 0.1.0
-Author: Pål Christie Ryalen <pal.ryalen@epfl.ch>
-Maintainer: Pål Christie Ryalen <pal.ryalen@epfl.ch>
+Author: Pål Christie Ryalen <p.c.ryalen@medisin.uio.no>
+Maintainer: Pål Christie Ryalen <p.c.ryalen@medisin.uio.no>
 Description: Solves SDE system driven by cumulative hazard estimates.
 License: GPL (>= 3)
 Suggests:
