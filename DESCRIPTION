@@ -5,7 +5,7 @@ Version: 0.1.0
 Author: Pål Christie Ryalen <pal.ryalen@epfl.ch>
 Maintainer: Pål Christie Ryalen <pal.ryalen@epfl.ch>
 Description: Solves SDE system driven by cumulative hazard estimates.
-License: CC BY-NC 4.0
+License: GPL (>= 3)
 Suggests:
 	timereg,
     knitr,
