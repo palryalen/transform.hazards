@@ -310,7 +310,7 @@ abline(a=0,b=0,col=2)
 Consider a similar example with differences of cumulative incidence functions
 
 \begin{equation} \begin{pmatrix} S^a_t \\ S_t^b \\ C_t^{a,1} \\ C_t^{a,2} \\ C_t^{b,1} \\ C_t^{b,2} \\ CD_t^1 \\ CD_t^2 \end{pmatrix} = \begin{pmatrix} 1 \\ 1 \\ 0 \\ 0 \\ 0 \\ 0 \\ 0 \\ 0 \end{pmatrix} + \int_0^t \begin{pmatrix} -S_s^a & -S_s^a & 0 & 0 \\ 0 & 0 & -S_s^b & -S_s^b \\ S_s^a & 0 & 0 & 0 \\ 0 & S_s^a & 0 & 0 \\ 0 & 0 & S_s^b  & 0 \\ 0 & 0 & 0 & S_s^b \\ S_s^a & 0 & -S_s^b & 0 \\ 0 & S_s^a & 0 & -S_s^b  \end{pmatrix} d \begin{pmatrix} A^{a,1}_s \\ A^{a,2}_s \\ A^{b,1}_s \\ A^{b,2}_s \end{pmatrix}, \end{equation}
-where $S^a$ is the survival in group $a$ and $S^b$ is the survival, and $C^{a,j}$ is the cumulative incidence for cause $j$ in group $a$ and similarly for group $b$. $CD^i = C^{a,i} - C^{b,i}$ is the cumulative incidence difference for cause $i$.
+where $S^a$ is the survival in group $a$ and $S^b$ is the survival in group $b$, and $C^{a,j}$ is the cumulative incidence for cause $j$ in group $a$ and similarly for group $b$. $CD^i = C^{a,i} - C^{b,i}$ is the cumulative incidence difference for cause $i$. We specify the ODE system.
 
 
 ```{r, fig.show='hold', echo=T}
@@ -364,37 +364,42 @@ v0_cuminc_diff <- matrix(0,nrow=8,ncol=8)
 
 
 
-We compare cumulative incidences for recurrence vs death between two treatment groups "Lev" and "Lev+5FU" in the *colon* data set. Specifying *hazmatrix*:
+We inspect cumulative incidences of the competing events PCM, and death without malignancy, in the *mgus2* data set. We compare males and females in this data set. Specifying *hazmatrix*:
 
 ```{r, fig.show='hold', echo=T}
 
-fr_lev <- colon[colon$rx == "Lev",]
-fr_lev$time <- fr_lev$time /365
-fr_lev5u <- colon[colon$rx == "Lev+5FU",]
-fr_lev5u$time <- fr_lev5u$time /365
+mgus2$etime <- with(mgus2, ifelse(pstat==0, futime, ptime))
+event <- with(mgus2, ifelse(pstat==0, 2*death, 1))
+mgus2$event <- factor(event, 0:2, labels=c("censor", "pcm", "death"))
 
-fit_rec_lev = aalen(Surv(time,etype==1 & status==1)~1,data=colon[colon$rx == "Lev",])
-fit_death_lev = aalen(Surv(time,etype==2 & status==1)~1,data=colon[colon$rx == "Lev",])
 
-fit_rec_lev5u = aalen(Surv(time,etype==1 & status==1)~1,data=colon[colon$rx == "Lev+5FU",])
-fit_death_lev5u = aalen(Surv(time,etype==2 & status==1)~1,data=colon[colon$rx == "Lev+5FU",])
+fr_M <- mgus2[mgus2$sex == "M",]
+fr_M$time <- fr_M$etime/12
+fr_F <- mgus2[mgus2$sex == "F",]
+fr_F$time <- fr_F$etime/12
 
-tms2 = sort(unique(c(fit_rec_lev$cum[,1],fit_rec_lev5u$cum[,1],
-                     fit_death_lev$cum[,1],fit_death_lev5u$cum[,1])))
-        
-dA_rec_lev = dA_rec_lev5u = dA_death_lev = dA_death_lev5u = rep(0, length(tms2))
-  
-  dA_rec_lev[match(fit_rec_lev$cum[,1], tms2)] = diff(c(0,fit_rec_lev$cum[,2]))
-  dA_death_lev[match(fit_death_lev$cum[,1], tms2)] = diff(c(0,fit_death_lev$cum[,2]))
-  
-  dA_rec_lev5u[match(fit_rec_lev5u$cum[,1], tms2)] = diff(c(0,fit_rec_lev5u$cum[,2]))
-  dA_death_lev5u[match(fit_death_lev5u$cum[,1], tms2)] = diff(c(0,fit_death_lev5u$cum[,2]))
-  
-  hazMatrix <- matrix(0,nrow=4,ncol=length(tms2))
-  hazMatrix[1,] <- dA_rec_lev
-  hazMatrix[2,] <- dA_death_lev
-  hazMatrix[3,] <- dA_rec_lev5u
-  hazMatrix[4,] <- dA_death_lev5u
+fit_PCM_M = aalen(Surv(time,event=="pcm")~1,data=fr_M)
+fit_death_M = aalen(Surv(time,event=="death")~1,data=fr_M)
+
+fit_PCM_F = aalen(Surv(time,event=="pcm")~1,data=fr_F)
+fit_death_F = aalen(Surv(time,event=="death")~1,data=fr_F)
+
+tms2 = sort(unique(c(fit_PCM_M$cum[,1],fit_PCM_F$cum[,1],
+                     fit_death_M$cum[,1],fit_death_F$cum[,1])))
+
+dA_PCM_M = dA_death_M = dA_PCM_F = dA_death_F = rep(0, length(tms2))
+
+dA_PCM_M[match(fit_PCM_M$cum[,1], tms2)] = diff(c(0,fit_PCM_M$cum[,2]))
+dA_PCM_F[match(fit_PCM_F$cum[,1], tms2)] = diff(c(0,fit_PCM_F$cum[,2]))
+
+dA_death_M[match(fit_death_M$cum[,1], tms2)] = diff(c(0,fit_death_M$cum[,2]))
+dA_death_F[match(fit_death_F$cum[,1], tms2)] = diff(c(0,fit_death_F$cum[,2]))
+
+hazMatrix <- matrix(0,nrow=4,ncol=length(tms2))
+hazMatrix[1,] <- dA_PCM_M
+hazMatrix[2,] <- dA_death_M
+hazMatrix[3,] <- dA_PCM_F
+hazMatrix[4,] <- dA_death_F
 
 plugEst <- pluginEstimate(1, hazMatrix, F_cuminc_diff, F_cuminc_diff_JacobianList,X0_cuminc_diff,v0_cuminc_diff)
 param = list(plugEst=plugEst, tms=tms2)
@@ -403,24 +408,55 @@ param = list(plugEst=plugEst, tms=tms2)
 Plotting $\hat{CD}^1$ and $\hat{CD}^2$ with 95\% confidence intervals:
 
 ```{r, fig.show='hold', echo=T}
-ymxx = max(param$plugEst$X[7,] + 1.96 * sqrt(param$plugEst$covariance[7,7,]),
-           param$plugEst$X[8,] + 1.96 * sqrt(param$plugEst$covariance[8,8,]))
-ymnn = min(param$plugEst$X[7,] - 1.96 * sqrt(param$plugEst$covariance[7,7,]),
-           param$plugEst$X[8,] - 1.96 * sqrt(param$plugEst$covariance[8,8,]))
 
-plot(param$tms/365, param$plugEst$X[7,],type="s",ylim=c(ymnn,ymxx),main="Cumulative incidence difference for recurrence",
-    ylab="",xlab="Years")
-lines(param$tms/365, param$plugEst$X[7,] + 1.96 * sqrt(param$plugEst$covariance[7,7,]),type="s",lty=2)
-lines(param$tms/365, param$plugEst$X[7,] - 1.96 * sqrt(param$plugEst$covariance[7,7,]),type="s",lty=2)
+# Colors
+male_color <- "red"
+female_color <- "blue"
+diff_color <- "gray"
+
+par(mfrow=c(1,2))
+# Plot with colors and labels
+plot(param$tms, param$plugEst$X[3,],type="s",ylim=c(-0.2,0.9),main="Cum.inc. PCM",
+     ylab="",xlab="Years", col=male_color)
+lines(param$tms, param$plugEst$X[3,] + 1.96 * sqrt(param$plugEst$covariance[3,3,]),type="s",lty=2, col=male_color)
+lines(param$tms, param$plugEst$X[3,] - 1.96 * sqrt(param$plugEst$covariance[3,3,]),type="s",lty=2, col=male_color)
+
+lines(param$tms, param$plugEst$X[5,],type="s", col=female_color)
+lines(param$tms, param$plugEst$X[5,] + 1.96 * sqrt(param$plugEst$covariance[5,5,]),type="s",lty=2, col=female_color)
+lines(param$tms, param$plugEst$X[5,] - 1.96 * sqrt(param$plugEst$covariance[5,5,]),type="s",lty=2, col=female_color)
+
+lines(param$tms, param$plugEst$X[7,],type="s", col=diff_color)
+lines(param$tms, param$plugEst$X[7,] + 1.96 * sqrt(param$plugEst$covariance[7,7,]),type="s",lty=2, col=diff_color)
+lines(param$tms, param$plugEst$X[7,] - 1.96 * sqrt(param$plugEst$covariance[7,7,]),type="s",lty=2, col=diff_color)
+
 abline(a=0,b=0,col=2)
 
+# Add legend
+legend("topleft", legend = c("Males", "Females", "Difference"), col = c(male_color, female_color, diff_color), lty = 1,bty="n")
 
 
-plot(param$tms/365, param$plugEst$X[8,],type="s",ylim=c(ymnn,ymxx),main="Cumulative incidence difference for death",
-     ylab="",xlab="Years")
-lines(param$tms/365, param$plugEst$X[8,] + 1.96 * sqrt(param$plugEst$covariance[8,8,]),type="s",lty=2)
-lines(param$tms/365, param$plugEst$X[8,] - 1.96 * sqrt(param$plugEst$covariance[8,8,]),type="s",lty=2)
+
+
+# Plot with colors and labels
+plot(param$tms, param$plugEst$X[4,],type="s",ylim=c(-0.2,0.9),main="Cum.inc. death",
+     ylab="",xlab="Years", col=male_color)
+lines(param$tms, param$plugEst$X[4,] + 1.96 * sqrt(param$plugEst$covariance[4,4,]),type="s",lty=2, col=male_color)
+lines(param$tms, param$plugEst$X[4,] - 1.96 * sqrt(param$plugEst$covariance[4,4,]),type="s",lty=2, col=male_color)
+
+lines(param$tms, param$plugEst$X[6,],type="s", col=female_color)
+lines(param$tms, param$plugEst$X[6,] + 1.96 * sqrt(param$plugEst$covariance[6,6,]),type="s",lty=2, col=female_color)
+lines(param$tms, param$plugEst$X[6,] - 1.96 * sqrt(param$plugEst$covariance[6,6,]),type="s",lty=2, col=female_color)
+
+lines(param$tms, param$plugEst$X[8,],type="s", col=diff_color)
+lines(param$tms, param$plugEst$X[8,] + 1.96 * sqrt(param$plugEst$covariance[8,8,]),type="s",lty=2, col=diff_color)
+lines(param$tms, param$plugEst$X[8,] - 1.96 * sqrt(param$plugEst$covariance[8,8,]),type="s",lty=2, col=diff_color)
+
 abline(a=0,b=0,col=2)
+
+# Add legend
+legend("topleft", legend = c("Males", "Females", "Difference"), col = c(male_color, female_color, diff_color), lty = 1,bty="n")
+
+
 ```
 
 
@@ -435,5 +471,5 @@ abline(a=0,b=0,col=2)
 
 
 
-[^fn1]: [Transforming cumulative hazard estimates] (Bioaetrika, 2018).
+[^fn1]: [Transforming cumulative hazard estimates] (Biometrika, 2018).
 [^fn2]: [On null hypothesis in survival analysis] (Biometrics, 2019) 
