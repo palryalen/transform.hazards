@@ -10,7 +10,7 @@ vignette: >
 ---
 
 
-Transforms cumulative hazard estimates to estimate survival analysis parameters specified by differential equations. We demonstrate how the method works om some commonly studied parameters.
+Transforms cumulative hazard estimates to estimate survival analysis parameters specified by differential equations. We demonstrate how the method works on some commonly studied parameters.
 
 
 ## Parameters
@@ -79,7 +79,7 @@ plot(times1,param$X,type="s",xlim=c(0,4),xlab="t",ylab="",main="Survival")
 lines(times1,param$X + 1.96 * sqrt(param$covariance[1,1,]),type="s",lty=2)
 lines(times1,param$X - 1.96 * sqrt(param$covariance[1,1,]),type="s",lty=2)
 lines(times1,exp(-times1),col=2)
-legend("topright",c("estimated","exact"),lty=1,col=c(1,2),bty="n")
+legend("topright",c("estimated","true"),lty=1,col=c(1,2),bty="n")
 ```
 
 ## Restricted mean survival
@@ -104,9 +104,9 @@ V0_restrict <- matrix(0,nrow=2,ncol=2)
 The restricted mean survival is a 'regular' (i.e. Lebesgue) integral, and we must therefore provide the time increments. We choose the time interval $[0,4]$ in $10^4$ increments:
 
 ```{r, fig.show='hold',results = "hide",echo=T}
-fimeTimes <- seq(0,4,length.out = 1e4+1)
+fineTimes <- seq(0,4,length.out = 1e4+1)
 
-tms <- sort(unique(c(fimeTimes,times1)))
+tms <- sort(unique(c(fineTimes,times1)))
 
 hazMatrix <- matrix(0,nrow=2,ncol=length(tms))
 hazMatrix[1,match(times1,tms)] <- dA_est1
@@ -125,7 +125,7 @@ plot(tms,param$X[2,],type="s",xlim=c(0,4),ylim=c(0,1.5),xlab="t",ylab="",main="R
 lines(tms,param$X[2,] + 1.96 * sqrt(param$covariance[2,2,]),type="s",lty=2)
 lines(tms,param$X[2,] - 1.96 * sqrt(param$covariance[2,2,]),type="s",lty=2)
 lines(tms,1 - exp(-tms),col=2)
-legend("topleft",c("estimated","exact"),lty=1,col=c(1,2),bty="n")
+legend("topleft",c("estimated","true"),lty=1,col=c(1,2),bty="n")
 
 ```
 
@@ -177,7 +177,7 @@ plot(times,param$X,type="s",xlim=c(0,4),ylim=c(-0.5,4),xlab="t",ylab="",main="Re
 lines(times,param$X + 1.96 * sqrt(param$covariance[1,1,]),type="s",lty=2)
 lines(times,param$X - 1.96 * sqrt(param$covariance[1,1,]),type="s",lty=2)
 lines(times,exp(-times*(1/1.3 - 1)),col=2)
-legend("topleft",c("estimated","exact"),lty=1,col=c(1,2),bty="n")
+legend("topleft",c("estimated","true"),lty=1,col=c(1,2),bty="n")
 
 ```
 
@@ -213,10 +213,10 @@ dfr$to.state <- sample(c(0,2,3),n1+n2,replace=T,prob=c(0.2,0.2,0.6))
 # Obtaining cause-specific cumulative hazard estimates and extracting the increments
 aamod22 <- aalen(Surv(from,to,to.state %in% c(2)) ~1, data=dfr)
 aamod33 <- aalen(Surv(from,to,to.state %in% c(3)) ~1, data=dfr)
-times = sort(unique(c(aamod22$cum[,1],aamod33$cum[,1])))
-hazMatrix = matrix(0,nrow=2,ncol=length(times))
-mt1 = match(aamod22$cum[,1],times)
-mt2 = match(aamod33$cum[,1],times)
+tmss = sort(unique(c(aamod22$cum[,1],aamod33$cum[,1])))
+hazMatrix = matrix(0,nrow=2,ncol=length(tmss))
+mt1 = match(aamod22$cum[,1],tmss)
+mt2 = match(aamod33$cum[,1],tmss)
 hazMatrix[1,mt1] = diff(c(0, aamod22$cum[,2] ))
 hazMatrix[2,mt2] = diff(c(0, aamod33$cum[,2] ))
 
@@ -227,14 +227,140 @@ param <- pluginEstimate(n1+n2,hazMatrix,F_cuminc,F_cuminc_JacobianList,X0_cuminc
 Finally, we plot the estimates of the cumulative incidences $C^1$ and $C^2$ with confidence intervals:
 
 ```{r, fig.show='hold', echo=T}
-plot(times,param$X[2,],type="s",xlim=c(0,4),ylim=c(0,1),xlab="t",ylab="",main="Cumulative incidence")
-lines(times,param$X[2,] + 1.96 * sqrt(param$covariance[2,2,]),type="s",lty=2)
-lines(times,param$X[2,] - 1.96 * sqrt(param$covariance[2,2,]),type="s",lty=2)
-lines(times,param$X[3,],type="s",col=3)
-lines(times,param$X[3,] + 1.96 * sqrt(param$covariance[3,3,]),type="s",lty=2,col=3)
-lines(times,param$X[3,] - 1.96 * sqrt(param$covariance[3,3,]),type="s",lty=2,col=3)
+plot(tmss,param$X[2,],type="s",xlim=c(0,4),ylim=c(0,1),xlab="t",ylab="",main="Cumulative incidence")
+lines(tmss,param$X[2,] + 1.96 * sqrt(param$covariance[2,2,]),type="s",lty=2)
+lines(tmss,param$X[2,] - 1.96 * sqrt(param$covariance[2,2,]),type="s",lty=2)
+lines(tmss,param$X[3,],type="s",col=3)
+lines(tmss,param$X[3,] + 1.96 * sqrt(param$covariance[3,3,]),type="s",lty=2,col=3)
+lines(tmss,param$X[3,] - 1.96 * sqrt(param$covariance[3,3,]),type="s",lty=2,col=3)
 legend("topleft",c(expression(C^1),expression(C^2)),lty=1,col=c(1,3),bty="n")
 ```
+
+
+
+## Restricted mean survival -- comparing two groups
+
+By re-specifying the ODE system we can comparw two groups. Consider the system
+
+
+\begin{equation} \begin{pmatrix} R_t^1 \\ R^2 \\ RD \\ S^1 \\ S^2 \end{pmatrix} = \begin{pmatrix} 0 \\ 0 \\ 0 \\ 1 \\ 1 \end{pmatrix} + \int_0^t \begin{pmatrix} S^1_{s} & 0 & 0 \\ S^2_{s} & 0 & 0 \\ S^1_{s} - S^2_{s} & 0 & 0 \\ 0 & -S_s^1 & 0 \\ 0 & 0 & -S_s^2 \end{pmatrix}d \begin{pmatrix}s \\ A_s^1 \\ A_s^2 \end{pmatrix},\end{equation}
+
+where $S^i$ is the survival function in group $i$. 
+<!-- Here, the colums of $F$, $F_1$ and $F_2$, are given by -->
+<!-- \begin{equation} F_1(x_1,x_2) = \begin{pmatrix} -x_1 \\ 0 \end{pmatrix}, F_2(x_1,x_2) = \begin{pmatrix} 0 \\ x_1 \end{pmatrix}.\end{equation} -->
+<!-- The Jacobian matrices are therefore -->
+<!-- \begin{equation} J_{F_1}(x_1,x_2) = \begin{pmatrix} -1 & 0 \\ 0 & 0 \end{pmatrix}, J_{F_2}(x_1,x_2) = \begin{pmatrix} 0 & 0 \\ 1 & 0 \end{pmatrix}. \end{equation} -->
+We specify matrix-valued functions and initial values as before
+
+```{r, fig.show='hold', echo=T}
+F_restrict_diff <- function(X)matrix(c(X[4],0,0,
+                                       X[5],0,0,
+                                       X[4]-X[5],0,0,
+                                       0,-X[4],0,
+                                       0,0,-X[5]),nrow=5,byrow=T)
+F_restrict_diff_JacobianList <- list(function(X)matrix(c(0,0,0,1,0,
+                                                         0,0,0,0,1,
+                                                         0,0,0,1,-1,
+                                                         rep(0,10)),nrow=5,byrow=T),
+                                     function(X)matrix(c(rep(0,18),-1,rep(0,6)),nrow=5,byrow=T),
+                                     function(X)matrix(c(rep(0,24),-1),nrow=5,byrow=T))
+
+X0_restrict_diff <- matrix(c(0,0,0,1,1),nrow=5)
+V0_restrict_diff <- matrix(0,nrow=5,ncol=5)
+```
+
+
+Specifying *hazmatrix*
+
+```{r, fig.show='hold', echo=T}
+tms <- sort(unique(c(fineTimes,times)))
+
+hazMatrix <- matrix(0,nrow=3,ncol=length(tms))
+hazMatrix[1,] <- diff(c(0,tms))
+hazMatrix[2,match(times1,tms)] <- dA_est1
+hazMatrix[3,match(times2,tms)] <- dA_est2
+  
+  
+plugEst <- pluginEstimate(1, hazMatrix, F_restrict_diff, F_restrict_diff_JacobianList,X0_restrict_diff,V0_restrict_diff,isLebesgue = 1)
+param = list(plugEst=plugEst, tms=tms)
+```
+
+Plotting $\hat R^1 - \hat R^2$ with 95\% confidence intervals.
+
+```{r, fig.show='hold', echo=T}
+plot(param$tms,param$plugEst$X[3,],type="s",ylim=c(-0.05,1.1*max(param$plugEst$X[3,] + 1.96 * sqrt(param$plugEst$covariance[3,3,]))),ylab="",
+     main="RMS difference",xlab="years")
+lines(param$tms,param$plugEst$X[3,] + 1.96 * sqrt(param$plugEst$covariance[3,3,]),type="s",lty=2)
+lines(param$tms,param$plugEst$X[3,] - 1.96 * sqrt(param$plugEst$covariance[3,3,]),type="s",lty=2)
+abline(a=0,b=0,col=2)
+```
+
+
+
+
+## Cumulative incidence -- comparing two groups
+
+
+Consider
+\begin{equation} \begin{pmatrix} S^a_t \\ S_t^b \\ C_t^{a,1} \\ C_t^{a,2} \\ C_t^{b,1} \\ C_t^{b,2} \\ CD_t^1 \\ CD_t^2 \end{pmatrix} = \begin{pmatrix} 1 \\ 1 \\ 0 \\ 0 \\ 0 \\ 0 \\ 0 \\ 0 \end{pmatrix} + \int_0^t \begin{pmatrix} -S_s^a & -S_s^a & 0 & 0 \\ 0 & 0 & -S_s^b & -S_s^b \\ S_s^a & 0 & 0 & 0 \\ 0 & S_s^a & 0 & 0 \\ 0 & 0 & S_s^b  & 0 \\ 0 & 0 & 0 & S_s^b \\ S_s^a & 0 & -S_s^b & 0 \\ 0 & S_s^a & 0 & -S_s^b  \end{pmatrix} d \begin{pmatrix} A^{a,1}_s \\ A^{a,2}_s \\ A^{b,1}_s \\ A^{b,2}_s \end{pmatrix}, \end{equation}
+where $S^a$ is the survival in group $a$ and $S^b$ is the survival, and $C^{a,j}$ is the cumulative incidence for cause $j$ in group $a$ and similarly for group $b$.
+
+
+```{r, fig.show='hold', echo=T}
+F_cuminc_diff <- function(X)matrix( c(-X[1],-X[1],0,0,
+                                      0,0,-X[2],-X[2],
+                                      X[1],0,0,0,
+                                      0,X[1],0,0,
+                                      0,0,X[2],0,
+                                      0,0,0,X[2],
+                                      X[1],0,-X[2],0,
+                                      0,X[1],0,-X[2]) ,nrow=8,byrow=T)
+F_cuminc_diff_JacobianList <- list(function(X)matrix(c(-1, rep(0,7),
+                                                       rep(0,8),
+                                                       1, rep(0,7),
+                                                       rep(0,8),
+                                                       rep(0,8),
+                                                       rep(0,8),
+                                                       1, rep(0,7),
+                                                       rep(0,8)),nrow=8,byrow=T),
+                                   function(X)matrix(c(-1, rep(0,7),
+                                                       rep(0,8),
+                                                       rep(0,8),
+                                                       1, rep(0,7),
+                                                       rep(0,8),
+                                                       rep(0,8),
+                                                       rep(0,8),
+                                                       1, rep(0,7)),nrow=8,byrow=T),
+                                   function(X)matrix(c(rep(0,8),
+                                                       0,-1, rep(0,6),
+                                                       rep(0,8),
+                                                       rep(0,8),
+                                                       0,1, rep(0,6),
+                                                       rep(0,8),
+                                                       0,-1, rep(0,6),
+                                                       rep(0,8)),nrow=8,byrow=T),
+                                   function(X)matrix(c(rep(0,8),
+                                                       0,-1, rep(0,6),
+                                                       rep(0,8),
+                                                       rep(0,8),
+                                                       rep(0,8),
+                                                       0,1, rep(0,6),
+                                                       rep(0,8),
+                                                       0,-1, rep(0,6)),nrow=8,byrow=T))
+
+
+X0_cuminc_diff <- matrix(c(1,1,0,0,0,0,0,0),nrow=8)
+v0_cuminc_diff <- matrix(0,nrow=8,ncol=8)
+```
+
+
+
+
+
+
+  
+
+
 
 
 [^fn1]: [Transforming cumulative hazard estimates] (Bioaetrika, 2018).
