@@ -240,8 +240,7 @@ legend("topleft",c(expression(C^1),expression(C^2)),lty=1,col=c(1,3),bty="n")
 
 ## Restricted mean survival -- comparing two groups
 
-By re-specifying the ODE system we can comparw two groups. Consider the system
-
+By re-specifying the ODE system we can compare two groups. We illustrate this in the restricted mean survival example. Consider the system
 
 \begin{equation} \begin{pmatrix} R_t^1 \\ R^2 \\ RD \\ S^1 \\ S^2 \end{pmatrix} = \begin{pmatrix} 0 \\ 0 \\ 0 \\ 1 \\ 1 \end{pmatrix} + \int_0^t \begin{pmatrix} S^1_{s} & 0 & 0 \\ S^2_{s} & 0 & 0 \\ S^1_{s} - S^2_{s} & 0 & 0 \\ 0 & -S_s^1 & 0 \\ 0 & 0 & -S_s^2 \end{pmatrix}d \begin{pmatrix}s \\ A_s^1 \\ A_s^2 \end{pmatrix},\end{equation}
 
@@ -250,7 +249,7 @@ where $S^i$ is the survival function in group $i$.
 <!-- \begin{equation} F_1(x_1,x_2) = \begin{pmatrix} -x_1 \\ 0 \end{pmatrix}, F_2(x_1,x_2) = \begin{pmatrix} 0 \\ x_1 \end{pmatrix}.\end{equation} -->
 <!-- The Jacobian matrices are therefore -->
 <!-- \begin{equation} J_{F_1}(x_1,x_2) = \begin{pmatrix} -1 & 0 \\ 0 & 0 \end{pmatrix}, J_{F_2}(x_1,x_2) = \begin{pmatrix} 0 & 0 \\ 1 & 0 \end{pmatrix}. \end{equation} -->
-We specify matrix-valued functions and initial values as before
+We specify matrix-valued functions and initial values as before:
 
 ```{r, fig.show='hold', echo=T}
 F_restrict_diff <- function(X)matrix(c(X[4],0,0,
@@ -270,26 +269,33 @@ V0_restrict_diff <- matrix(0,nrow=5,ncol=5)
 ```
 
 
-Specifying *hazmatrix*
+We compare RMS for males and females in the *flchain* data set in the *survival* package. Specifying *hazmatrix*:
 
 ```{r, fig.show='hold', echo=T}
-tms <- sort(unique(c(fineTimes,times)))
+
+aa_male = aalen(Surv(futime,death==1)~1, data = flchain[flchain$sex=="M",]) 
+aa_female = aalen(Surv(futime,death==1)~1, data = flchain[flchain$sex=="F",]) 
+
+tms <- sort(unique(c(fineTimes,aa_male$cum[,1], aa_female$cum[,1])))
+mt_male = match(aa_male$cum[,1],tms)
+mt_female = match(aa_female$cum[,1],tms)
 
 hazMatrix <- matrix(0,nrow=3,ncol=length(tms))
 hazMatrix[1,] <- diff(c(0,tms))
-hazMatrix[2,match(times1,tms)] <- dA_est1
-hazMatrix[3,match(times2,tms)] <- dA_est2
+hazMatrix[2,mt_male] <- diff(c(0,aa_male$cum[,2]))
+hazMatrix[3,mt_female] <- diff(c(0,aa_female$cum[,2]))
   
   
 plugEst <- pluginEstimate(1, hazMatrix, F_restrict_diff, F_restrict_diff_JacobianList,X0_restrict_diff,V0_restrict_diff,isLebesgue = 1)
 param = list(plugEst=plugEst, tms=tms)
 ```
 
-Plotting $\hat R^1 - \hat R^2$ with 95\% confidence intervals.
+Plotting $\hat{RD} = \hat R^1 - \hat R^2$ with 95\% confidence intervals:
 
 ```{r, fig.show='hold', echo=T}
-plot(param$tms,param$plugEst$X[3,],type="s",ylim=c(-0.05,1.1*max(param$plugEst$X[3,] + 1.96 * sqrt(param$plugEst$covariance[3,3,]))),ylab="",
-     main="RMS difference",xlab="years")
+ylims = c(1.1*min(param$plugEst$X[3,] - 1.96 * sqrt(param$plugEst$covariance[3,3,])),
+          1.1*max(param$plugEst$X[3,] + 1.96 * sqrt(param$plugEst$covariance[3,3,])))
+plot(param$tms,param$plugEst$X[3,],type="s",ylim=ylims,ylab="",main="RMS difference",xlab="years")
 lines(param$tms,param$plugEst$X[3,] + 1.96 * sqrt(param$plugEst$covariance[3,3,]),type="s",lty=2)
 lines(param$tms,param$plugEst$X[3,] - 1.96 * sqrt(param$plugEst$covariance[3,3,]),type="s",lty=2)
 abline(a=0,b=0,col=2)
@@ -301,9 +307,10 @@ abline(a=0,b=0,col=2)
 ## Cumulative incidence -- comparing two groups
 
 
-Consider
+Consider a similar example with differences of cumulative incidence functions
+
 \begin{equation} \begin{pmatrix} S^a_t \\ S_t^b \\ C_t^{a,1} \\ C_t^{a,2} \\ C_t^{b,1} \\ C_t^{b,2} \\ CD_t^1 \\ CD_t^2 \end{pmatrix} = \begin{pmatrix} 1 \\ 1 \\ 0 \\ 0 \\ 0 \\ 0 \\ 0 \\ 0 \end{pmatrix} + \int_0^t \begin{pmatrix} -S_s^a & -S_s^a & 0 & 0 \\ 0 & 0 & -S_s^b & -S_s^b \\ S_s^a & 0 & 0 & 0 \\ 0 & S_s^a & 0 & 0 \\ 0 & 0 & S_s^b  & 0 \\ 0 & 0 & 0 & S_s^b \\ S_s^a & 0 & -S_s^b & 0 \\ 0 & S_s^a & 0 & -S_s^b  \end{pmatrix} d \begin{pmatrix} A^{a,1}_s \\ A^{a,2}_s \\ A^{b,1}_s \\ A^{b,2}_s \end{pmatrix}, \end{equation}
-where $S^a$ is the survival in group $a$ and $S^b$ is the survival, and $C^{a,j}$ is the cumulative incidence for cause $j$ in group $a$ and similarly for group $b$.
+where $S^a$ is the survival in group $a$ and $S^b$ is the survival, and $C^{a,j}$ is the cumulative incidence for cause $j$ in group $a$ and similarly for group $b$. $CD^i = C^{a,i} - C^{b,i}$ is the cumulative incidence difference for cause $i$.
 
 
 ```{r, fig.show='hold', echo=T}
@@ -352,6 +359,71 @@ F_cuminc_diff_JacobianList <- list(function(X)matrix(c(-1, rep(0,7),
 X0_cuminc_diff <- matrix(c(1,1,0,0,0,0,0,0),nrow=8)
 v0_cuminc_diff <- matrix(0,nrow=8,ncol=8)
 ```
+
+
+
+
+
+We compare cumulative incidences for recurrence vs death between two treatment groups "Lev" and "Lev+5FU" in the *colon* data set. Specifying *hazmatrix*:
+
+```{r, fig.show='hold', echo=T}
+
+fr_lev <- colon[colon$rx == "Lev",]
+fr_lev$time <- fr_lev$time /365
+fr_lev5u <- colon[colon$rx == "Lev+5FU",]
+fr_lev5u$time <- fr_lev5u$time /365
+
+fit_rec_lev = aalen(Surv(time,etype==1 & status==1)~1,data=colon[colon$rx == "Lev",])
+fit_death_lev = aalen(Surv(time,etype==2 & status==1)~1,data=colon[colon$rx == "Lev",])
+
+fit_rec_lev5u = aalen(Surv(time,etype==1 & status==1)~1,data=colon[colon$rx == "Lev+5FU",])
+fit_death_lev5u = aalen(Surv(time,etype==2 & status==1)~1,data=colon[colon$rx == "Lev+5FU",])
+
+tms2 = sort(unique(c(fit_rec_lev$cum[,1],fit_rec_lev5u$cum[,1],
+                     fit_death_lev$cum[,1],fit_death_lev5u$cum[,1])))
+        
+dA_rec_lev = dA_rec_lev5u = dA_death_lev = dA_death_lev5u = rep(0, length(tms2))
+  
+  dA_rec_lev[match(fit_rec_lev$cum[,1], tms2)] = diff(c(0,fit_rec_lev$cum[,2]))
+  dA_death_lev[match(fit_death_lev$cum[,1], tms2)] = diff(c(0,fit_death_lev$cum[,2]))
+  
+  dA_rec_lev5u[match(fit_rec_lev5u$cum[,1], tms2)] = diff(c(0,fit_rec_lev5u$cum[,2]))
+  dA_death_lev5u[match(fit_death_lev5u$cum[,1], tms2)] = diff(c(0,fit_death_lev5u$cum[,2]))
+  
+  hazMatrix <- matrix(0,nrow=4,ncol=length(tms2))
+  hazMatrix[1,] <- dA_rec_lev
+  hazMatrix[2,] <- dA_death_lev
+  hazMatrix[3,] <- dA_rec_lev5u
+  hazMatrix[4,] <- dA_death_lev5u
+
+plugEst <- pluginEstimate(1, hazMatrix, F_cuminc_diff, F_cuminc_diff_JacobianList,X0_cuminc_diff,v0_cuminc_diff)
+param = list(plugEst=plugEst, tms=tms2)
+```
+
+Plotting $\hat{CD}^1$ and $\hat{CD}^2$ with 95\% confidence intervals:
+
+```{r, fig.show='hold', echo=T}
+ymxx = max(param$plugEst$X[7,] + 1.96 * sqrt(param$plugEst$covariance[7,7,]),
+           param$plugEst$X[8,] + 1.96 * sqrt(param$plugEst$covariance[8,8,]))
+ymnn = min(param$plugEst$X[7,] - 1.96 * sqrt(param$plugEst$covariance[7,7,]),
+           param$plugEst$X[8,] - 1.96 * sqrt(param$plugEst$covariance[8,8,]))
+
+plot(param$tms/365, param$plugEst$X[7,],type="s",ylim=c(ymnn,ymxx),main="Cumulative incidence difference for recurrence",
+    ylab="",xlab="Years")
+lines(param$tms/365, param$plugEst$X[7,] + 1.96 * sqrt(param$plugEst$covariance[7,7,]),type="s",lty=2)
+lines(param$tms/365, param$plugEst$X[7,] - 1.96 * sqrt(param$plugEst$covariance[7,7,]),type="s",lty=2)
+abline(a=0,b=0,col=2)
+
+
+
+plot(param$tms/365, param$plugEst$X[8,],type="s",ylim=c(ymnn,ymxx),main="Cumulative incidence difference for death",
+     ylab="",xlab="Years")
+lines(param$tms/365, param$plugEst$X[8,] + 1.96 * sqrt(param$plugEst$covariance[8,8,]),type="s",lty=2)
+lines(param$tms/365, param$plugEst$X[8,] - 1.96 * sqrt(param$plugEst$covariance[8,8,]),type="s",lty=2)
+abline(a=0,b=0,col=2)
+```
+
+
 
 
 
